@@ -1,0 +1,874 @@
+<!doctype html>
+<html lang="ja">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>中学理科 一問一答 完全版</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap');
+    body, html { font-family: 'Noto Sans JP', sans-serif; height: 100%; margin: 0; padding: 0; }
+    .quiz-container { height: 100%; display: flex; flex-direction: column; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .quiz-card { background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); padding: 32px; margin: 20px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; animation: slideIn 0.4s ease-out; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .question-text { font-size: 24px; font-weight: 600; color: #333; margin-bottom: 24px; line-height: 1.6; }
+    .question-number { display: inline-block; background: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 14px; margin-bottom: 16px; }
+    .button-group { display: flex; gap: 12px; justify-content: center; }
+    button { padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+    .btn-reveal { background: #667eea; color: white; flex: 1; }
+    .btn-remember { background: #48bb78; color: white; flex: 1; }
+    .btn-forgot { background: #ed8936; color: white; flex: 1; }
+    .answer-section { margin-top: 24px; padding-top: 24px; border-top: 2px solid #e2e8f0; min-height: 60px; display: flex; align-items: center; }
+    .answer-text { font-size: 20px; color: #48bb78; font-weight: 600; line-height: 1.6; word-wrap: break-word; white-space: pre-wrap; }
+    .progress-bar { width: 100%; height: 6px; background: rgba(255, 255, 255, 0.3); border-radius: 3px; margin-bottom: 20px; }
+    .progress-fill { height: 100%; background: white; border-radius: 3px; transition: width 0.3s ease; }
+    .header { padding: 16px 20px; color: white; display: flex; justify-content: space-between; align-items: center; }
+    .header-title { font-size: 20px; font-weight: 700; }
+    .header-stats { font-size: 14px; opacity: 0.9; }
+    .category-menu { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; padding: 20px; overflow-y: auto; }
+    .category-button { background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px; cursor: pointer; text-align: left; }
+    .category-button:hover { border-color: #667eea; transform: translateY(-2px); }
+    .category-title { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 4px; }
+    .category-count { font-size: 14px; color: #999; }
+  </style>
+ </head>
+ <body>
+  <div class="quiz-container">
+   <div class="header">
+    <div class="header-title" id="app-title">中学理科 一問一答</div>
+    <div class="header-stats" id="header-stats">- / -</div>
+   </div>
+   <div style="padding: 0 20px;"><div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width: 0%"></div></div></div>
+   <div id="quiz-content" style="flex: 1; display: flex; flex-direction: column; overflow-y: auto;">
+    <div id="category-selection" class="category-menu"></div>
+    <div id="quiz-screen" style="display: none; flex: 1; display: flex; flex-direction: column;">
+     <div class="quiz-card" id="main-card-ui"></div>
+    </div>
+   </div>
+   <div style="display: flex; justify-content: space-between; padding: 16px 20px;">
+    <button id="btn-prev" onclick="prevQuestion()" style="display: none; background: #ed8936; color: white; border-radius: 8px; width: 100px;">← 戻る</button>
+    <div style="flex: 1;"></div>
+    <button id="btn-back" onclick="backToMenu()" style="display: none; background: #718096; color: white; border-radius: 8px; padding: 12px 20px;">メニューに戻る</button>
+   </div>
+  </div>
+
+  <script>
+    const quizCategories = {
+      biology: { name: '生物の分類', emoji: '🧬', questions: [
+        { num: 1, question: 'ルーペを使うときは、できるだけどのようにして持つか。', answer: '目に近づけて持つ' },
+        { num: 2, question: '双眼実体顕微鏡で、右目でのぞきながら操作する部分を何というか。', answer: '微動(びどう)ねじ' },
+        { num: 3, question: '双眼実体顕微鏡で、左目でのぞきながら操作する部分を何というか。', answer: '視度(しど)調節(ちょうせつ)リング' },
+        { num: 4, question: 'プレパラートの作成で、カバーガラスをかけるときに注意する点は何か。', answer: '気泡(きほう)が入らないようにする' },
+        { num: 5, question: '顕微鏡を持ち運ぶときに、きき手でつかむ部分を何というか。', answer: 'アーム' },
+        { num: 6, question: '顕微鏡を持ち運ぶときに、きき手と反対側の手をそえる部分を何というか。', answer: '鏡台(きょうだい)' },
+        { num: 7, question: '顕微鏡の観察で、ピントを合わせたあとに、光の量を調節するために操作する部分を何というか。', answer: 'しぼり' },
+        { num: 8, question: '顕微鏡で、対物レンズの倍率を変えるときに回す部分を何というか。', answer: 'レボルバー' },
+        { num: 9, question: '顕微鏡で、観察したいものを中央にもってきたいとき、プレパラートはどう動かすか。', answer: '逆方向に動かす' },
+        { num: 10, question: '顕微鏡の倍率を上げるとき、明るさは明るくなるか暗くなるか。', answer: '暗くなる' },
+        { num: 11, question: '顕微鏡の倍率を上げると視野がせまくなるのは、プレパラートとレンズの距離がどうなるからか。', answer: '近くなるから\n（せまくなるから）' },
+        { num: 12, question: '接眼レンズをのぞきながらピントを合わせるとき、プレパラートと対物レンズの距離はだんだん近づけるかだんだん遠ざけるか。', answer: '遠ざける' },
+        { num: 13, question: '花のつくりで、外側から数えて１番目にあるのは何か。', answer: 'がく' },
+        { num: 14, question: '花のつくりで、外側から数えて２番目にあるのは調整は何か。', answer: '花弁(かべん)' },
+        { num: 15, question: '花のつくりで、外側から数えて３番目にあるのは何か。', answer: 'おしべ' },
+        { num: 16, question: '花のつくりで、外側から数えて４番目にあるのは何か。', answer: 'めしべ' },
+        { num: 17, question: '花弁が１枚１枚離れている花を何というか。', answer: '離(り)弁(べん)花(か)' },
+        { num: 18, question: '花弁がたがいにくっついている花を何というか。', answer: '合弁(ごうべん)花(か)' },
+        { num: 19, question: 'おしべの先端部分にある小さな袋を何というか。', answer: 'やく' },
+        { num: 20, question: 'やくで作られるものは何か。', answer: '花粉(かふん)' },
+        { num: 21, question: 'めしべの先端部分は何か。', answer: '柱頭(ちゅうとう)' },
+        { num: 22, question: 'めしべのもとのふくらんだ部分は何か。', answer: '子房(しぼう)' },
+        { num: 23, question: '子房の中にあり、将来種子になるものは何か。', answer: '胚珠(はいしゅ)' },
+        { num: 24, question: '子房が成長すると何になるか。', answer: '果実(かじつ)' },
+        { num: 25, question: '胚珠が成長すると何になるか。', answer: '種子(しゅし)' },
+        { num: 26, question: 'めしべの柱頭に花粉がつくことを何というか。', answer: '受粉(じゅふん)' },
+        { num: 27, question: '胚珠が子房で包まれている植物のなかまを何というか。', answer: '被子(ひし)植物' },
+        { num: 28, question: '花をつけて種子を作る植物のなかまを何というか。', answer: '種子(しゅし)植物' },
+        { num: 29, question: '葉に見られるすじのようなつくりを何というか。', answer: '葉脈(ようみゃく)' },
+        { num: 30, question: '単子葉類の根のつくりはどうなっているか。', answer: 'ひげ根' },
+        { num: 31, question: '双子葉類の根のつくりはどうなっているか。', answer: '主(しゅ)根(こん)と側(そっ)根(こん)' },
+        { num: 32, question: '単子葉類の葉脈はどうなっているか。', answer: '平行（平行脈）' },
+        { num: 33, question: '双子葉類の葉脈はどうなっているか。', answer: '網目(あみめ)状（網状脈(もうじょうみゃく)）' },
+        { num: 34, question: '被子植物で、子葉が１枚のものを何というか。', answer: '単子葉(たんしよう)類' },
+        { num: 35, question: '被子植物で、子葉が２枚のものを何というか。', answer: '双子葉(そうしよう)類' },
+        { num: 36, question: 'マツの雄花のりん片には何があるか。', answer: '花粉のう' },
+        { num: 37, question: 'マツの雌花のりん片には何があるか。', answer: '胚珠' },
+        { num: 38, question: '胚珠がむき出しになっている植物のなかまを何というか。', answer: '裸子(らし)植物' },
+        { num: 39, question: '双子葉類で、花弁が１枚１枚離れているなかまを何というか。', answer: '離弁花類' },
+        { num: 40, question: '双子葉類で、花弁がくっついているなかまを何というか。', answer: '合弁花類' },
+        { num: 41, question: '花が咲かず、根・茎・葉の区別がある植物は何植物か。', answer: 'シダ植物' },
+        { num: 42, question: '花が咲かない植物は、何によってふえるか。', answer: '胞子(ほうし)' },
+        { num: 43, question: '胞子はどこでつくられるか。', answer: '胞子のう' },
+        { num: 44, question: '花が咲かず、根・茎・葉の区別がない植物は何植物か。', answer: 'コケ植物' },
+        { num: 45, question: 'コケ植物のからだを固定するためのつくりを何というか。', answer: '仮根(かこん)' },
+        { num: 46, question: 'ワカメやコンブなどの海藻は、植物に分類できるか。', answer: 'できない' },
+        { num: 47, question: '背骨がある動物を何というか。', answer: 'セキツイ動物' },
+        { num: 48, question: '背骨がない動物を何というか。', answer: '無セキツイ動物' },
+        { num: 49, question: 'ホニュウ類の生まれ方を何というか。', answer: '胎生(たいせい)' },
+        { num: 50, question: '魚類・両生類・ハチュウ類・鳥類の生まれ方を何というか。', answer: '卵生(らんせい)' },
+        { num: 51, question: '殻のある卵を産む種類は○○に強い。○○に入る言葉は何か。', answer: '乾燥(かんそう)' },
+        { num: 52, question: '卵から生まれた動物が、子をつくれる状態まで成長したものを何というか。', answer: '成体(せいたい)' },
+        { num: 53, question: '成体に対して大きく形や生活のしかたがちがう子の時期がある場合、その段階のことを何というか。', answer: '幼生(ようせい)' },
+        { num: 54, question: '両生類や昆虫・カニなどの幼生が成体に変わる過程を何というか。', answer: '変態(へんたい)' },
+        { num: 55, question: '体温を一定に保つしくみをもつ動物を何というか。', answer: '恒温(こうおん)動物' },
+        { num: 56, question: '環境の温度の変化によって体温が変化する動物を何というか。', answer: '変温(へんおん)動物' },
+        { num: 57, question: 'ホニュウ類の場合、目が前にならんでつき、犬歯が発達しているものは何動物と考えられるか。', answer: '肉食動物' },
+        { num: 58, question: 'ホニュウ類の場合、目が横に離れてつき、門歯や臼歯が発達しているものは何動物と考えられるか。', answer: '草食動物' },
+        { num: 59, question: '昆虫類や甲殻類に見られる、からだをおおう殻のようなものを何というか。', answer: '外(がい)骨格(こっかく)' },
+        { num: 60, question: '外骨格をもつ動物をまとめて何というか。', answer: '節足(せっそく)動物' },
+        { num: 61, question: '昆虫類でも甲殻類でもないクモやムカデは、節足動物といえるか。', answer: 'いえる' },
+        { num: 62, question: '貝やタコ、イカなど、外とう膜をもつ動物を何というか。', answer: '軟体(なんたい)動物' },
+        { num: 63, question: '軟体動物の内臓をおおう膜を何というか。', answer: '外(がい)とう膜(まく)' }
+      ]},
+      matter: { name: '身のまわりの物質', emoji: '🧪', questions: [
+        { num: 1, question: 'ものを外見で判断する場合の呼び方は何か。', answer: '物体(ぶったい)' },
+        { num: 2, question: 'ものをつくっている材料から判断する場合の呼び方は何か。', answer: '物質(ぶっしつ)' },
+        { num: 3, question: '電気を通しやすい、熱を伝えやすい、みがくと光る、たたくとのびるといった共通の性質をもつ物質は何か。', answer: '金属(きんぞく)' },
+        { num: 4, question: '金属の、みがくと光る性質を何というか。', answer: '金属光沢(こうたく)' },
+        { num: 5, question: '金属以外の物質を何というか。', answer: '非金属(ひきんぞく)' },
+        { num: 6, question: '場所が変わっても変化しない、物質そのものの量を何というか。', answer: '質量(しつりょう)' },
+        { num: 7, question: '燃やすと二酸化炭素と水ができる、炭素を含む化合物を何というか。', answer: '有機物(ゆうきぶつ)' },
+        { num: 8, question: '有機物以外の物質を何というか。', answer: '無機物(むきぶつ)' },
+        { num: 9, question: '有機物を燃焼させたときに必ず出る物質は、水と何か。', answer: '二酸化炭素(にさんかたんそ)' },
+        { num: 10, question: 'プラスチックは有機物か無機物か。', answer: '有機物' },
+        { num: 11, question: 'ガラスは有機物か無機物か。', answer: '無機物' },
+        { num: 12, question: '二酸化炭素は有機物か無機物か。', answer: '無機物' },
+        { num: 13, question: '電子てんびんを使って粉末の質量をはかりとるとき、0点スイッチを押す前にすることは何か。', answer: '薬包紙(やくほうし)（容器(ようき)）をのせる。' },
+        { num: 14, question: '上皿てんびんがつりあっているとき、指針はどうなっているか。', answer: '等しくふれている。' },
+        { num: 15, question: 'メスシリンダーを使うとき、液面の高さは水平な方向から見てどこを読み取るか。', answer: '低い部分' },
+        { num: 16, question: 'メスシリンダーや温度計を使うとき、最小目盛りの10分の1までをどのように読み取るか。', answer: '目分量(めぶんりょう)' },
+        { num: 17, question: '物質ごとに決まっている、一定の体積（単位体積）あたりの質量のことを何というか。', answer: '密度(みつど)' },
+        { num: 18, question: '鉄と銅では、どちらの密度が大きいか。', answer: '銅(どう)' },
+        { num: 19, question: '鉄のボルトやナットを液体の水銀に入れると浮かぶのはなぜか。', answer: '鉄(てつ)より水銀(すいぎん)の密度が大きいため' },
+        { num: 20, question: '石灰石や貝がらに、うすい塩酸を加えると発生する気体は何か。', answer: '二酸化炭素' },
+        { num: 21, question: '二酸化マンガンにうすい過酸化水素水（オキシドール）を加えたときに発生する気体は何か。', answer: '酸素(さんそ)' },
+        { num: 22, question: '亜鉛などの金属に、酸性の水溶液を加えて発生する気体は何か。', answer: '水素(すいそ)' },
+        { num: 23, question: '空気の約80％を占める気体は何か。', answer: '窒素(ちっそ)' },
+        { num: 24, question: '塩化アンモニウムと水酸化カルシウムを混ぜて加熱すると発生する気体は何か。', answer: 'アンモニア' },
+        { num: 25, question: '漂白作用、殺菌作用があり、黄緑色で刺激臭がある有毒な気体は何か。', answer: '塩素(えんそ)' },
+        { num: 26, question: '有機物が不完全に燃焼したときに発生する、きわめて有毒な気体は何か。', answer: '一酸化炭素(いっさんかたんそ)' },
+        { num: 27, question: '気体のにおいを調べるときにすることは何か。', answer: '手であおぐ' },
+        { num: 28, question: '水素の集め方は何か。', answer: '水上(すいじょう)置換(ちかん)（水上置換法）' },
+        { num: 29, question: 'アンモニアの集め方は何か。', answer: '上方(じょうほう)置換(ちかん)（上方置換法）' },
+        { num: 30, question: '酸素の集め方は何か。', answer: '水上置換（水上置換法）' },
+        { num: 31, question: '二酸化炭素に適していない集め方は何か。', answer: '上方置換（上方置換法）' },
+        { num: 32, question: '1種類の物質でできているものを何というか。', answer: '純粋(じゅんすい)な物質（純物質）' },
+        { num: 33, question: 'いくつかの物質が混じり合ったものを何というか。', answer: '混合(こんごう)物' },
+        { num: 34, question: 'アンモニアの水溶液は酸性かアルカリ性か。', answer: 'アルカリ性' },
+        { num: 35, question: 'あらゆる物質の中で最も沸点が低く、空気より軽い、ほかの物質と反応しない気体は何か。', answer: 'ヘリウム' },
+        { num: 36, question: '天然ガスの主成分で、都市ガスに使われている無色・無臭の気体は何か。', answer: 'メタン' },
+        { num: 37, question: '水に溶けると塩酸になる気体は何か。', answer: '塩化(えんか)水素(すいそ)' },
+        { num: 38, question: '水によく溶け、無色で刺激臭があり、火山ガスにも含まれる気体は何か。', answer: '二(に)酸化(さんか)硫黄(いおう)' },
+        { num: 39, question: '水に溶けやすく、無色で腐卵臭のある気体は何か。', answer: '硫化(りゅうか)水素(すいそ)' },
+        { num: 40, question: '水によく溶け、赤褐色で有毒な気体は何か。', answer: '二(に)酸化(さんか)窒素(ちっそ)' },
+        { num: 41, question: '砂糖水の砂糖のように、溶けている物質を何というか。', answer: '溶質(ようしつ)' },
+        { num: 42, question: '砂糖水の水のように、物質を溶かしている液体を何というか。', answer: '溶媒(ようばい)' },
+        { num: 43, question: '溶質が溶媒に溶けた液全体を何というか。', answer: '溶液(ようえき)' },
+        { num: 44, question: '溶媒が水の溶液を何というか。', answer: '水溶液(すいようえき)' },
+        { num: 45, question: '溶質の質量が溶液の質量の何％にあたるかを示すものは何か。', answer: '質量パーセント濃度(のうど)' },
+        { num: 46, question: '一定量の水に、限界まで溶質を溶かした水溶液を何というか。', answer: '飽和(ほうわ)水溶液' },
+        { num: 47, question: '水100ｇに溶ける溶質の限界の質量を何というか。', answer: '溶解度(ようかいど)' },
+        { num: 48, question: '水の温度によって変化する溶解度をグラフに表したものを何というか。', answer: '溶解度曲線' },
+        { num: 49, question: '食塩水から食塩を効率良く取り出す方法には何があるか。', answer: '水の蒸発(じょうはつ)' },
+        { num: 50, question: '塩化ナトリウムと硝酸カリウムのうち、水溶液を冷やすことによって取り出しやすい物質はどちらか。', answer: '硝酸(しょうさん)カリウム' },
+        { num: 51, question: '純粋な物質でできており、いくつかの平面で囲まれた、規則正しい形のかたまりを何というか。', answer: '結晶(けっしょう)' },
+        { num: 52, question: '溶解度の差を利用して溶質を取り出す方法を何というか。', answer: '再結晶' },
+        { num: 53, question: '炭酸水の溶質は何か。', answer: '二酸化炭素' },
+        { num: 54, question: '温度によって固体⇔液体⇔気体と変化することを何というか。', answer: '状態(じょうたい)変化' },
+        { num: 55, question: '液体の水が気体の水蒸気になると体積は約何倍になるか。', answer: '約1700倍' },
+        { num: 56, question: '液体のエタノールが気体になると体積は約何倍になるか。', answer: '約490倍' },
+        { num: 57, question: '液体の水が固体の氷になると体積は約何倍になるか。', answer: '約1.1倍' },
+        { num: 58, question: '同じ質量のとき、液体の水と固体の氷で体積が大きいのはどちらか。', answer: '固体(こたい)の氷' },
+        { num: 59, question: '同じ質量のとき、液体の水と固体の氷で密度が大きいのはどちらか。', answer: '液体(えきたい)の水' },
+        { num: 60, question: '物質ごとに決まっている、沸騰する温度を何というか。', answer: '沸点(ふってん)' },
+        { num: 61, question: '物質ごとに決まっている、固体が液体になる温度を何というか。', answer: '融点(ゆうてん)' },
+        { num: 62, question: 'エタノールの沸点は約何℃か。', answer: '約78℃' },
+        { num: 63, question: '水の沸点は約何℃か。', answer: '約100℃' },
+        { num: 64, question: '沸点の差を利用して、液体を取り出す方法を何というか。', answer: '蒸留(じょうりゅう)' },
+        { num: 65, question: '水や水溶液と、水に溶け残った物質とを分ける方法は何か。', answer: 'ろ過(か)' }
+      ]},
+      phenomena: { name: '身のまわりの現象', emoji: '🌈', questions: [
+        { num: 1, question: '自ら光を出す物体を何というか。', answer: '光源(こうげん)' },
+        { num: 2, question: '光がまっすぐ進むことを何というか。', answer: '光の直進(ちょくしん)' },
+        { num: 3, question: '物体の表面で光がはね返ることを何というか。', answer: '光の反射(はんしゃ)' },
+        { num: 4, question: '境界面に入っていく光と、境界面に垂直な線とでつくる角を何というか。', answer: '入射(にゅうしゃ)角(かく)' },
+        { num: 5, question: '境界面で反射した光と、境界面に垂直な線とでつくる角を何というか。', answer: '反射角' },
+        { num: 6, question: '光が反射するとき、入射角と反射角が等しくなることを何というか。', answer: '反射の法則' },
+        { num: 7, question: '鏡によって、実際にはそこにない物体があるように見えるとき、見えているものを何というか。', answer: '像(ぞう)' },
+        { num: 8, question: '物体の表面に細かい凹凸がある場合に、光が様々な方向に反射することを何というか。', answer: '乱(らん)反射(はんしゃ)' },
+        { num: 9, question: '鏡に全身を映すには、上下にどれくらいの大きさがあればよいか。', answer: '身長の半分' },
+        { num: 10, question: '透明な物質の境界面に斜めに入射する光が境界面で曲がることを何というか。', answer: '光の屈折(くっせつ)' },
+        { num: 11, question: '境界面で屈折した光と、境界面に垂直な線とでつくる角を何というか。', answer: '屈折角' },
+        { num: 12, question: '透明な物質から空気中に光が進んだ場合、入射角と屈折角はどちらが大きいか。', answer: '屈折角' },
+        { num: 13, question: '透明な物質から空気中に光が進むとき、入射角がある程度大きくなると光がすべて反射することを何というか。', answer: '全反射(ぜんはんしゃ)' },
+        { num: 14, question: '全反射を利用した技術には、何があるか。', answer: '光ファイバー' },
+        { num: 15, question: '遠くのものや小さいものをよく見るために使う、中心のふくらんだレンズを何というか。', answer: '凸(とつ)レンズ' },
+        { num: 16, question: '凸レンズの中心を通り、凸レンズに垂直な直線のことを何というか。', answer: '凸レンズの軸(じく)（光軸(こうじく)）' },
+        { num: 17, question: '凸レンズの軸と平行な光が、凸レンズで屈折して１点に集まる点を何というか。', answer: '焦点(しょうてん)' },
+        { num: 18, question: '凸レンズの中心から焦点までの距離を何というか。', answer: '焦点距離' },
+        { num: 19, question: '凸レンズのふくらみが厚いとき、焦点距離はどうなるか。', answer: '短くなる。' },
+        { num: 20, question: 'レンズを通して見たり、スクリーンに映して見たりすることのできるものをまとめて何というか。', answer: '像' },
+        { num: 21, question: '凸レンズの中心を通る光はどのように進むか。', answer: '直進する' },
+        { num: 22, question: '焦点を通る光は凸レンズで屈折してどのように進むか。', answer: '凸レンズの軸（光軸）と平行に進む' },
+        { num: 23, question: '物体が焦点より外側にあるとき、スクリーンに映る上下左右逆の像を何というか。', answer: '実像(じつぞう)' },
+        { num: 24, question: '物体が焦点と凸レンズの間にあるとき、凸レンズをのぞいて見える物体より大きな像を何というか。', answer: '虚像(きょぞう)' },
+        { num: 25, question: '物体と同じ大きさの実像が映るのは、物体をどこに置いたときか。', answer: '焦点距離の２倍の位置' },
+        { num: 26, question: '同じ高さの音が出る２つのおんさを向かい合わせて、片方を叩くともう片方も鳴る。このことから、音は何によって伝えられたと考えられるか。', answer: '空気' },
+        { num: 27, question: '同じ高さの音が出るおんさを２つ用意し、片方をたたくともう片方も鳴るが、間に板を置くとどうなるか。', answer: '音が伝わりにくくなる' },
+        { num: 28, question: '真空容器にブザーを入れ、真空ポンプで空気を抜いていくと、ブザーの音はどうなるか。', answer: '聞こえにくくなる' },
+        { num: 29, question: '音の速さは、空気中で秒速約何ｍか。', answer: '秒速約340ｍ' },
+        { num: 30, question: '光の速さは、秒速約何ｋｍか。', answer: '秒速約30万ｋｍ' },
+        { num: 31, question: '音が空気中を伝わる速さと、液体や固体の中を伝わる速さとでは、どちらの方が早いか', answer: '液体や固体の中' },
+        { num: 32, question: '振幅は、どこからの幅か。', answer: '振動(しんどう)の中心\n（もとの位置）' },
+        { num: 33, question: '長さ以外の条件がすべて等しいとき、長い弦と短い弦で、高い音が出るのはどちらか。', answer: '短い弦' },
+        { num: 34, question: '張りの強さ以外の条件がすべて等しいとき、強く張った弦と弱く張った弦で、高い音が出るのはどちらか。', answer: '強く張った弦' },
+        { num: 35, question: '音の大きさは、波の何で決まるか。', answer: '振幅(しんぷく)' },
+        { num: 36, question: '音の高さは、波の何で決まるか。', answer: '振動数(しんどうすう)' },
+        { num: 37, question: '振幅が大きいのはどういう音か。', answer: '大きい音' },
+        { num: 38, question: '可聴音で、振動数が多いのはどういう音か。', answer: '高い音' },
+        { num: 39, question: '1秒間での振動数を表す単位は何か。また、それを何と読むか。', answer: 'Ｈｚ、ヘルツ' },
+        { num: 40, question: '約20000Hzを超え、ヒトには聞こえない高さの音を特別に何というか。', answer: '超音波(ちょうおんぱ)' },
+        { num: 41, question: '力のはたらきには、物体の形を変える、物体を持ち上げたり支えたりする他に、何があるか。', answer: '物体の運動の状態を変える' },
+        { num: 42, question: '地球上にあるすべての物体に常にはたらいている、地球の中心に向かう力を何というか。', answer: '重力(じゅうりょく)' },
+        { num: 43, question: '100ｇの質量の物体に加わる重力と、ほぼ等しい力の大きさを答えよ。', answer: '１Ｎ' },
+        { num: 44, question: '力によって変形させられた物体が、もとにもどろうとする性質を何というか。', answer: '弾性(だんせい)' },
+        { num: 45, question: '力によって変形させられた物体が、もとにもどろうとする方向にはたらく力を何というか。', answer: '弾性の力（弾性力）' },
+        { num: 46, question: '磁石による引き合ったり反発したりする力を何というか。', answer: '磁石(じしゃく)の力（磁力(じりょく)）' },
+        { num: 47, question: '電気を帯びた物体がもつ、物体どうしが離れていてもはたらく力を何というか。', answer: '電気の力（電気力）' },
+        { num: 48, question: '物体にはたらく力を矢印で表すとき、力のはたらく点（作用点）、力の向きのほかに、何が必要か。', answer: '力の大きさ' },
+        { num: 49, question: '物体どうしがふれている面の間にはたらいて、運動をさまたげる力を何というか。', answer: '摩擦(まさつ)力' },
+        { num: 50, question: 'ばねの伸びが、ばねを引く力の大きさに比例する法則を何というか。', answer: 'フックの法則' },
+        { num: 51, question: '通常、力を表す矢印は作用点から引くが、物体の中心から矢印を引くのはどんな力のときか。', answer: '重力' },
+        { num: 52, question: 'てんびんばかり（上皿てんびん）で調べる物質そのものの量を何というか。', answer: '質量' },
+        { num: 53, question: '月の重力は地球の約何倍か。', answer: '約1/6倍' },
+        { num: 54, question: '２力が１つの物体にはたらき、２力が一直線上にあり、向きが反対で、２力の大きさが等しいとき、どういうことがいえるか。', answer: '２力がつり合っている' },
+        { num: 55, question: '面が物体におされたとき、その力に逆らって面が物体をおし返す力を何というか。', answer: '垂直(すいちょく)抗力(こうりょく)' }
+      ]},
+      earth: { name: '大地の変化', emoji: '🌋', questions: [
+        { num: 1, question: '火山の形はマグマの何によって決まるか。', answer: 'ねばりけ' },
+        { num: 2, question: '地球内部の熱などにより、地下の岩石がとけたものを何というか。', answer: 'マグマ' },
+        { num: 3, question: 'マグマに含まれる高圧のガスが、地表付近の岩石をふき飛ばしておこる現象を何というか。', answer: '噴火(ふんか)' },
+        { num: 4, question: '火山ガスや火山灰、火山弾など、火山の噴火によって地上にふき出すものをまとめて何というか。', answer: '火山(かざん)噴出物(ふんしゅつぶつ)' },
+        { num: 5, question: 'マグマが地表に現れたものを何というか。', answer: '溶岩(ようがん)' },
+        { num: 6, question: '火山噴出物の1つで、洗うことによって直径2mm以下の細かな粒が観察できるものを何というか。', answer: '火山(かざん)灰(ばい)' },
+        { num: 7, question: 'ねばりけが強いマグマがつくる、盛り上がった溶岩のかたまりを何というか。', answer: '溶岩ドーム' },
+        { num: 8, question: '溶岩の色が黒っぽい火山の噴火の様子は激しいか、穏やかか。', answer: '穏(おだ)やか' },
+        { num: 9, question: 'ドーム状の火山の噴火の様子はどうか。', answer: '激(はげ)しく爆発的(ばくはつてき)' },
+        { num: 10, question: '伊豆大島火山（三原山）の溶岩を作るマグマのねばりけは強いか弱いか。', answer: '弱い' },
+        { num: 11, question: '雲仙普賢岳、有珠山、昭和新山の溶岩を作るマグマのねばりけは強いか弱いか。', answer: '強い' },
+        { num: 12, question: 'マグマが冷えてできた粒が、結晶になったものを何というか。', answer: '鉱物(こうぶつ)' },
+        { num: 13, question: '無色または白色で、不規則に割れる鉱物は何か。', answer: '石英(せきえい)' },
+        { num: 14, question: '白色、灰色、うす桃色などの色をした、決まった方向に割れる鉱物は何か。', answer: '長石(ちょうせき)' },
+        { num: 15, question: '黒色で、決まった方向にうすくはがれる鉱物は何か。', answer: '黒雲母(くろうんも)' },
+        { num: 16, question: '暗い緑色、黒色などの色をした、長い柱状の鉱物は何か。', answer: '角閃(かくせん)石(せき)' },
+        { num: 17, question: '緑色、褐色などの色をした、短い柱状の鉱物は何か。', answer: '輝石(きせき)' },
+        { num: 18, question: 'うす緑、黄緑、茶褐色などの色をした、不規則な形の小さい粒である鉱物は何か。', answer: 'カンラン石' },
+        { num: 19, question: '不透明な黒色で、表面がかがやいており、磁石につく鉱物は何か。', answer: '磁鉄鉱(じてっこう)' },
+        { num: 20, question: 'ねばりけが弱いマグマで作られた溶岩の色は白っぽいか黒っぽいか。', answer: '黒っぽい' },
+        { num: 21, question: 'ねばりけが強いマグマで作られた溶岩の色は白っぽいか黒っぽいか。', answer: '白っぽい' },
+        { num: 22, question: 'マグマが冷えて固まった岩石を何というか。', answer: '火成岩(かせいがん)' },
+        { num: 23, question: 'マグマが地表や地表付近で、短い時間で冷えて固まった岩石を何というか。', answer: '火山岩' },
+        { num: 24, question: 'マグマが地上にふき出すことがなく、大変長い時間をかけて地下で冷えて固まった岩石を何というか。', answer: '深成(しんせい)岩' },
+        { num: 25, question: '火山岩に見られる、形がわからないほどの小さな粒を何というか。', answer: '石基(せっき)' },
+        { num: 26, question: '火山岩に見られる、比較的大きな黒色や白色の鉱物を何というか。', answer: '斑(はん)晶(しょう)' },
+        { num: 27, question: '火山岩に見られるつくりを何というか。', answer: '斑状(はんじょう)組織(そしき)' },
+        { num: 28, question: '深成岩に見られるつくりを何というか。', answer: '等(とう)粒状(りゅうじょう)組織' },
+        { num: 29, question: 'がけなどで、地層が見える状態になっている地形を何というか。', answer: '露頭(ろとう)' },
+        { num: 30, question: '斑状組織が見られる、ねばりけが中くらいのマグマによってできた岩石を何というか。', answer: '安山岩(あんざんがん)' },
+        { num: 31, question: '火山岩の中で黒っぽい岩石に分類されるものを何というか。', answer: '玄武岩(げんぶがん)' },
+        { num: 32, question: '無色鉱物を７割程度含み、等粒状組織が見られる火成岩を何というか。', answer: '閃(せん)緑岩(りょくがん)' },
+        { num: 33, question: '無色鉱物を半分程度含む深成岩を何というか。', answer: 'はんれい岩' },
+        { num: 34, question: '斑状組織が見られる岩石の中で、白っぽい岩石に分類されるものを何というか。', answer: '流(りゅう)紋岩(もんがん)' },
+        { num: 35, question: '地下深くでゆっくり冷え固まってできた、無色鉱物を多く含む火成岩を何というか。', answer: '花(か)こう岩' },
+        { num: 36, question: '流水のはたらきで、土砂がたまることを何というか。', answer: '堆積(たいせき)' },
+        { num: 37, question: 'れき・砂・泥などの堆積のくりかえしでできた大地のつくりを何というか。', answer: '地層(ちそう)' },
+        { num: 38, question: 'プレートにかかる様々な力により、岩盤が破壊されてずれが生じたものを何というか。', answer: '断層(だんそう)' },
+        { num: 39, question: '岩石が、気温の変化や風雨のはたらきで、もろくなることを何というか。', answer: '風化(ふうか)' },
+        { num: 40, question: '流水のはたらきで、岩石がけずられることを何というか。', answer: '侵食(しんしょく)' },
+        { num: 41, question: '流水のはたらきで、土砂が運ばれることを何というか。', answer: '運搬(うんぱん)' },
+        { num: 42, question: '地層の重なりを調べるため、穴をほって地層を採取したものを何というか。', answer: 'ボーリング試料(しりょう)' },
+        { num: 43, question: '扇状地と三角州では、堆積物の粒はどちらの方が大きいか。', answer: '扇状地(せんじょうち)' },
+        { num: 44, question: '同じ噴火による凝灰岩の層のように、地層の年代を知る手がかりになる層を何というか。', answer: 'かぎ層（鍵層）' },
+        { num: 45, question: '地震が発生した場所を何というか。', answer: '震源(しんげん)' },
+        { num: 46, question: '震源の真上の地点を何というか。', answer: '震央(しんおう)' },
+        { num: 47, question: '地震において、はじめに記録される小さなゆれを何というか。', answer: '初期(しょき)微動(びどう)' },
+        { num: 48, question: '地震計に記録されるゆれのうち、大きなゆれのことを何というか。', answer: '主要動' },
+        { num: 49, question: 'P波が到着してからS波が到着するまでの時間を何というか。', answer: '初期微動継続(けいぞく)時間(じかん)\n（P-S時間）' },
+        { num: 50, question: '初期微動を伝える波を何というか。', answer: 'P波(は)' },
+        { num: 51, question: '主要動を伝える波を何というか。', answer: 'S波' },
+        { num: 52, question: '地震の規模を表す単位を何というか。', answer: 'マグニチュード（M）' },
+        { num: 53, question: '初期微動継続時間と震源からの距離の関係には、ほぼ決まった関係があるが、それは何か。', answer: '比例（震源から離れるほど長くなる）' },
+        { num: 54, question: 'マグニチュードが１増えると、地震のエネルギーは約何倍になるか。', answer: '約30倍（約32倍）' },
+        { num: 55, question: '地層が、大きく波うつように曲がったつくりを何というか。', answer: 'しゅう曲' },
+        { num: 56, question: '海底や湖底に積もったものが押し固められて岩石になったものを何というか。', answer: '堆積岩' },
+        { num: 57, question: '震源が海底にあった場合に発生することがある災害は何か。', answer: '津波(つなみ)' },
+        { num: 58, question: '地震によるゆれの大きさを10段階で表したものを何というか。', answer: '震度' },
+        { num: 59, question: '地震の伝わり方は震央を中心にほぼどうなっているか。', answer: '同心(どうしん)円(えん)状（震央を中心とした円形）' },
+        { num: 60, question: '生物の死がいが堆積してできた岩石で、うすい塩酸をかけると二酸化炭素が発生しないものは何か。', answer: 'チャート' },
+        { num: 61, question: '地震により大地が持ち上がることを何というか。', answer: '隆起(りゅうき)' },
+        { num: 62, question: '地震により大地が沈むことを何というか。', answer: '沈降(ちんこう)' },
+        { num: 63, question: '地層の重なりを図で表したものを何というか。', answer: '柱状図(ちゅうじょうず)' },
+        { num: 64, question: '生物の死がいが堆積してできた岩石で、うすい塩酸をかけると二酸化炭素が発生するものは何か。', answer: '石灰岩(せっかいがん)' },
+        { num: 65, question: 'れき岩、砂岩、泥岩それぞれをつくる粒に共通する特徴は何か。', answer: '丸みをおびている' },
+        { num: 66, question: '土砂によって、生物の死がいや巣穴などがうめられ、長い年月を経てできるものを何というか。', answer: '化石(かせき)' },
+        { num: 67, question: '中央海嶺でつくられ、地球の表面をおおう厚さ100kmほどの岩盤を何というか。', answer: 'プレート' },
+        { num: 68, question: '堆積した当時の環境がわかる化石を何というか。', answer: '示相(しそう)化石' },
+        { num: 69, question: 'あたたかくて浅い海であったことを示す示相化石は何か。', answer: 'サンゴ' },
+        { num: 70, question: '堆積した年代（地質年代）がわかる化石を何というか。', answer: '示(し)準(じゅん)化石' },
+        { num: 71, question: 'フズリナ・サンヨウチュウは、どの時代にいた生物か。', answer: '古生代(こせいだい)' },
+        { num: 72, question: 'アンモナイト・恐竜は、どの時代にいた生物か。', answer: '中生代(ちゅうせいだい)' },
+        { num: 73, question: 'カヘイセキ・ビカリア・ナウマンゾウは、どの時代にいた生物か。', answer: '新生代(しんせいだい)' },
+        { num: 74, question: '日本に2000以上あり、断層の中で、今後もくり返しずれが生じる可能性があるものを何というか。', answer: '活断層(かつだんそう)' },
+        { num: 75, question: '日本付近の大陸プレートは、ユーラシアプレートの他に何があるか。', answer: '北アメリカプレート' },
+        { num: 76, question: '日本付近の海洋プレートは、フィリピン海プレートの他に何があるか。', answer: '太平洋プレート' },
+        { num: 77, question: 'プレートとプレートがぶつかり、沈み込むことでできる海底の地形を何というか。', answer: '海溝(かいこう)' },
+        { num: 78, question: '地震の最大震度が５弱以上と推定されるとき、震度４以上になる予測がされた地域に伝えられる警告をなんというか。', answer: '緊急(きんきゅう)地震(じしん)速報(そくほう)' },
+        { num: 79, question: '地震のゆれにより、急に地面がやわらかくなる現象を何というか。', answer: '液状化(えきじょうか)現象(げんしょう)' }
+      ]},
+      cell_organs: { name: '生物をつくる役割と組織', emoji: '🧫', questions: [
+        { num: 1, question: '生物のからだをつくる小さな部屋のようなものを何というか。', answer: '細胞(さいぼう)' },
+        { num: 2, question: 'からだが１つの細胞でできている生物を何というか。', answer: '単(たん)細胞生物' },
+        { num: 3, question: '細胞の中にあり、染色液によく染まるものを何というか。', answer: '核(かく)' },
+        { num: 4, question: '植物の細胞に見られ、光合成を行う粒を何というか。', answer: '葉(よう)緑体(りょくたい)' },
+        { num: 5, question: '細胞の活動によってできた物質や水分が入っており、成長した植物の細胞の大部分を占めるつくりを何というか。', answer: '液胞' },
+        { num: 6, question: '動物の細胞の外側を囲んでいるものを何というか。', answer: '細胞膜' },
+        { num: 7, question: '植物の細胞の外側を囲んでいるものを何というか。', answer: '細胞壁(へき)' },
+        { num: 8, question: 'からだが２つ以上の細胞でできている生物を何というか。', answer: '多(た)細胞生物' },
+        { num: 9, question: '細胞の中で、核と細胞壁を除いたすべてを何というか。', answer: '細胞質' },
+        { num: 10, question: '形やはたらきが同じ細胞が集まってできたものを何というか。', answer: '組織' },
+        { num: 11, question: 'いくつかの種類の組織が集まって、１つのまとまった形をもち、特定のはたらきをする部分を何というか。', answer: '器官(きかん)' },
+        { num: 12, question: 'いくつかの器官が集まってできたものを何というか。', answer: '個体(こたい)' },
+        { num: 13, question: '細胞の中で、養分が酸素を使って分解され、エネルギーが取り出されることを何というか。', answer: '細胞呼吸(こきゅう)（内呼吸）' },
+        { num: 14, question: 'デンプンがあるとき、ヨウ素液をつけると何色になるか。', answer: '青(あお)紫(むらさき)色' },
+        { num: 15, question: 'ふ入りの葉の一部をアルミニウムはくでおおって一晩おき、翌日、じゅうぶんに光を当てる実験で、脱色に使う薬品は何か。', answer: 'エタノール' },
+        { num: 16, question: '２つの孔辺細胞に囲まれたすきまを何というか。', answer: '気孔(きこう)' },
+        { num: 17, question: '葉の維管束の断面で、葉の表側に位置するのは師管か道管か。', answer: '道管(どうかん)' },
+        { num: 18, question: '葉の緑色の部分が光を受けて、デンプンなどの養分をつくるはたらきを何というか。', answer: '光合成(こうごうせい)' },
+        { num: 19, question: '植物の表皮細胞にないが、葉肉細胞や孔辺細胞にはあるものは何か。', answer: '葉緑体' },
+        { num: 20, question: 'ある１つの条件以外を同じにして結果の異なる実験を行い、変化の条件を明らかにする実験を何というか。', answer: '対照(たいしょう)実験(じっけん)' },
+        { num: 21, question: '気孔が最も多いのは葉のどこか。', answer: '葉の裏(うら)側' },
+        { num: 22, question: '植物は、夜は呼吸だけを行っているが、昼はどうか。', answer: '呼吸と光合成を行っている' },
+        { num: 23, question: '師管と道管のまとまりを何というか。', answer: '維管束(いかんそく)' },
+        { num: 24, question: '根から吸い上げられた水や肥料分を運ぶ管を何というか。', answer: '道管' },
+        { num: 25, question: '葉で作られた養分が、水にとける物質になって運ばれる管を何というか。', answer: '師管(しかん)' },
+        { num: 26, question: '光合成の材料となる物質を２つ書け。', answer: '水、二酸化炭素' },
+        { num: 27, question: '光合成でできるものを２つ書け。', answer: 'デンプン、酸素' },
+        { num: 28, question: '根から吸い上げられた水が、水蒸気になって出ていくことを何というか。', answer: '蒸散(じょうさん)' },
+        { num: 29, question: '単子葉類の茎の維管束はどうなっているか。', answer: 'ばらばら' },
+        { num: 30, question: '根の先端付近にあり、表面積を大きくすることで土に食い込んだり効率良く水分を吸収したりするつくりを何というか。', answer: '根(こん)毛(もう)' },
+        { num: 31, question: '双子葉類の茎の維管束はどうなっているか。', answer: '輪(わ)の形' },
+        { num: 32, question: '食物が細かくなって吸収されやすい物質になることを何というか。', answer: '消化(しょうか)' },
+        { num: 33, question: 'だ液や胃液など、食物を消化するはたらきをもつ液を何というか。', answer: '消化液' },
+        { num: 34, question: '消化液に含まれる、決まった成分を分解するはたらきのあるものを何というか。', answer: '消化酵素(こうそ)' },
+        { num: 35, question: '口から始まって肛門で終わる１本の長い管を何というか。', answer: '消化管(かん)' },
+        { num: 36, question: 'ブドウ糖や麦芽糖にまぜて加熱すると、赤褐色の沈殿ができる試薬を何というか。', answer: 'ベネジクト液' },
+        { num: 37, question: 'だ液に含まれる消化酵素がはたらく温度は約何℃か。', answer: '約40℃' },
+        { num: 38, question: 'だ液に含まれる消化酵素は何か。', answer: 'アミラーゼ' },
+        { num: 39, question: 'アミラーゼのはたらきによって、麦芽糖などに変わる物質は何か。', answer: 'デンプン' },
+        { num: 40, question: '胃液に含まれる消化酵素は何か。', answer: 'ペプシン' },
+        { num: 41, question: 'すい液に含まれ、タンパク質にはたらく消化酵素は何か。', answer: 'トリプシン' },
+        { num: 42, question: 'すい液に含まれ、脂肪にはたらく消化酵素は何か。', answer: 'リパーゼ' },
+        { num: 43, question: '消化酵素を含まず、脂肪の消化をたすけるはたらきをする消化液は何か。', answer: '胆汁(たんじゅう)' },
+        { num: 44, question: 'デンプンは消化されて最終的に何になるか。', answer: 'ブドウ糖(とう)' },
+        { num: 45, question: 'タンパク質は消化されて最終的に何になるか。', answer: 'アミノ酸' },
+        { num: 46, question: '脂肪は脂肪酸と何に分解されるか。', answer: 'モノグリセリド' },
+        { num: 47, question: '小腸の壁に多く見られる突起を何というか。', answer: '柔(じゅう)毛(もう)' },
+        { num: 48, question: 'デンプン・タンパク質が分解されたものは、小腸の柔毛内のどの管に吸収されるか。', answer: '毛細(もうさい)血管(けっかん)' },
+        { num: 49, question: '脂肪が分解されたものは、小腸の柔毛内で再び脂肪になったあと、どの管に吸収されるか。', answer: 'リンパ管' },
+        { num: 50, question: '人体における一連の消化吸収において、水分は主にどこで吸収されるか。', answer: '小腸(しょうちょう)' },
+        { num: 51, question: '肺による呼吸を行うときにはたらき、胸腔のろっ骨以外の部分をおおう大きな筋肉は何か。', answer: '横隔膜(おうかくまく)' },
+        { num: 52, question: '気管支の先につながり、多数の毛細血管に囲まれた袋を何というか。', answer: '肺胞(はいほう)' },
+        { num: 53, question: 'ブドウ糖の一部は、何になって肝臓にたくわえられるか。', answer: 'グリコーゲン' },
+        { num: 54, question: '組織に網の目のように張り巡らされている血管を何というか。', answer: '毛細血管' },
+        { num: 55, question: '心臓から送り出される血液が流れる血管を何というか。', answer: '動脈(どうみゃく)' },
+        { num: 56, question: '心臓へ戻ってくる血液が流れる血管を何というか。', answer: '静脈(じょうみゃく)' },
+        { num: 57, question: '動脈になく、静脈にあるものは何か。', answer: '弁(べん)' },
+        { num: 58, question: '酸素を多く含む、明るい色の血液を何というか。', answer: '動脈血(けつ)' },
+        { num: 59, question: '二酸化炭素を多く含む、暗い色の血液を何というか。', answer: '静脈血' },
+        { num: 60, question: '心臓から肺を通って心臓に戻る血液の循環を何というか。', answer: '肺(はい)循環(じゅんかん)' },
+        { num: 61, question: '心臓から肺以外の全身を通って心臓に戻る血液の循環を何というか。', answer: '体(たい)循環' },
+        { num: 62, question: '動脈血が流れる静脈を何というか。', answer: '肺静脈' },
+        { num: 63, question: '肝臓は体内に有害なアンモニアを何に変えるか。', answer: '尿素(にょうそ)' },
+        { num: 64, question: '酸素を運ぶ血球を何というか。', answer: '赤血球(せっけっきゅう)' },
+        { num: 65, question: '細菌などの異物を分解する血球を何というか。', answer: '白血球(はっけっきゅう)' },
+        { num: 66, question: '酸素濃度の低いところでは酸素をはなし、酸素濃度の高いところでは酸素と結びつく物質を何というか。', answer: 'ヘモグロビン' },
+        { num: 67, question: '養分や二酸化炭素などの不要物を運ぶ血液の成分を何というか。', answer: '血(けっ)しょう' },
+        { num: 68, question: '血しょうの一部が毛細血管の壁からしみ出て、細胞のまわりを満たす物質を何というか。', answer: '組織液' },
+        { num: 69, question: 'じん臓でこしとられ、ぼうこうにたまり、１日に約1.2～1.5L排出される人体の不要物を何というか。', answer: '尿' },
+        { num: 70, question: 'じん臓とぼうこうをつなぐ管を何というか。', answer: '輸(ゆ)尿管(にょうかん)' },
+        { num: 71, question: '刺激を受けとる器官を何というか。', answer: '感覚器官' },
+        { num: 72, question: '目に入る光の量を調節する組織を何というか。', answer: '虹彩(こうさい)' },
+        { num: 73, question: '器官と脳の間で信号を伝える組織を何というか。', answer: '神経(しんけい)' },
+        { num: 74, question: '感覚器官から中枢神経へ信号を伝える神経を何というか。', answer: '感覚(かんかく)神経' },
+        { num: 75, question: '脳やせきずいをまとめて何というか。', answer: '中枢(ちゅうすう)神経' },
+        { num: 76, question: '中枢神経から枝分かれして全身に広がる神経を何というか。', answer: '末しょう神経' },
+        { num: 77, question: '中枢神経から運動器官へ信号を伝える神経を何というか。', answer: '運動(うんどう)神経' },
+        { num: 78, question: '筋肉の両端についており、関節をまたいで別々の骨にくっついている部分を何というか。', answer: 'けん' },
+        { num: 79, question: '刺激に対して大脳を経由せず、せきずいからの命令で反応を起こすことを何というか。', answer: '反射' }
+      ]},
+      atoms: { name: '化学変化と原子・分子', emoji: '⚛️', questions: [
+        { num: 1, question: 'もとの物質とは違う物質ができる変化を何というか。', answer: '化学(かがく)変化' },
+        { num: 2, question: '１種類の物質が２種類以上の物質に分かれる化学変化を何というか。', answer: '分解(ぶんかい)' },
+        { num: 3, question: '炭酸水素ナトリウムや酸化銀などを、加熱によって分解することを何というか。', answer: '熱(ねつ)分解' },
+        { num: 4, question: '酸化銀の色は何色か。', answer: '黒色' },
+        { num: 5, question: '水を加熱してできた水蒸気を、さらに加熱して紙に当てるとどうなるか。', answer: '紙が焦(こ)げる' },
+        { num: 6, question: '化学変化によって、それ以上小さくすることができない粒子を何というか。', answer: '原子(げんし)' },
+        { num: 7, question: '炭酸水素ナトリウムの熱分解で、出てきた液体が加熱部に流れ込むのを防ぐためにすることは何か。', answer: '試験管(しけんかん)の口を下げる' },
+        { num: 8, question: '炭酸水素ナトリウムの熱分解で、火を止める前にすることは何か。', answer: 'ガラス管を水の中から出す' },
+        { num: 9, question: '気体が発生する分解の実験で、最初に出てくる気体はどうするか。', answer: '使わない' },
+        { num: 10, question: '銀原子と直径6cmのボールの大きさの比は、直径6cmのボールと○○の比にほぼ等しい。○○に入るものは何か。', answer: '地球(ちきゅう)' },
+        { num: 11, question: '直径13cmの果物と地球の大きさの比にほぼ等しくなるのは、水素原子と直径何cmの球の大きさの比か。', answer: '1cm' },
+        { num: 12, question: '水の電気分解で、陰極側に発生する気体は何か。', answer: '水素' },
+        { num: 13, question: '水の電気分解で、陽極側に発生する気体は何か。', answer: '酸素' },
+        { num: 14, question: '炭酸水素ナトリウム水溶液にフェノールフタレイン溶液を加えたときの色は何か。', answer: 'うすい赤色' },
+        { num: 15, question: '水かどうかを調べる試験紙を何というか。', answer: '塩化(えんか)コバルト紙(し)' },
+        { num: 16, question: '青色の塩化コバルト紙を水につけると、何色になるか。', answer: '赤色（桃(もも)色）' },
+        { num: 17, question: '炭酸ナトリウム水溶液にフェノールフタレイン溶液を加えたときの色は何か。', answer: '赤色（濃(こ)い赤色）' },
+        { num: 18, question: '炭酸水素ナトリウム水溶液のアルカリ性は、強いか弱いか。', answer: '弱い' },
+        { num: 19, question: '炭酸ナトリウム水溶液のアルカリ性は、強いか弱いか。', answer: '強い' },
+        { num: 20, question: '炭酸水素ナトリウムと炭酸ナトリウムでは、より水に溶けやすいのはどちらか。', answer: '炭酸ナトリウム' },
+        { num: 21, question: '化合物に電流を流して分解することを何というか。', answer: '電気分解' },
+        { num: 22, question: '原子の種類を表すために使われる、世界共通の記号を何というか。', answer: '元素(げんそ)記号(きごう)' },
+        { num: 23, question: '原子を原子番号順に並べて性質を整理した表を何というか。', answer: '周期表(しゅうきひょう)' },
+        { num: 24, question: '原子と原子が結びついて単位になった粒子を何というか。', answer: '分子' },
+        { num: 25, question: '元素記号を使って物質を表したものを何というか。', answer: '化学式' },
+        { num: 26, question: '純粋な物質のうち、１種類の原子でできている物質を何というか。', answer: '単体(たんたい)' },
+        { num: 27, question: '純粋な物質のうち、２種類以上の原子でできている物質を何というか。', answer: '化合物(かごうぶつ)' },
+        { num: 28, question: '１種類の化学式で表すことのできる、混ざり合っていない物質を何というか。', answer: '純粋(じゅんすい)な物質（純物質）' },
+        { num: 29, question: '１種類の化学式で表すことのできない、混ざり合った物質を何というか。', answer: '混合(こんごう)物' },
+        { num: 30, question: '化学式の組み合わせで化学変化を表したものを何というか。', answer: '化学反応式' },
+        { num: 31, question: '硫化銅を曲げようとするとどうなるか。', answer: '曲がらず折れる' },
+        { num: 32, question: '鉄と硫黄の化合物にうすい塩酸を加えると発生する気体は何か。', answer: '硫化水素' },
+        { num: 33, question: '硫化鉄は、磁石につくか。', answer: 'つかない' },
+        { num: 34, question: '鉄と硫黄の混合物にうすい塩酸を加えると発生する気体は何か。', answer: '水素' },
+        { num: 35, question: '物質が酸素と結びつくことを何というか。', answer: '酸化' },
+        { num: 36, question: '物質が酸素と結びついたものを何というか。', answer: '酸化物' },
+        { num: 37, question: '光や熱を出す激しい酸化を何というか。', answer: '燃焼(ねんしょう)' },
+        { num: 38, question: '硫化鉄を作るとき、鉄：硫黄の質量比は何対何か。', answer: '７：４' },
+        { num: 39, question: 'ゆっくりとした酸化でできるものを何というか。', answer: 'さび' },
+        { num: 40, question: '木片や炭を燃焼させると質量はどうなるか。', answer: '減少(げんしょう)する' },
+        { num: 41, question: '鉄を燃焼させると質量はどうなるか。', answer: '増加(ぞうか)する' },
+        { num: 42, question: 'マグネシウムを加熱してできる白っぽい物質は何か。', answer: '酸化マグネシウム' },
+        { num: 43, question: '鉄と硫黄が結びつく化学変化は、発熱反応か吸熱反応か。', answer: '発熱(はつねつ)反応(はんのう)' },
+        { num: 44, question: '酸化物が酸素をうばわれる化学変化を何というか。', answer: '還元(かんげん)' },
+        { num: 45, question: '気体が発生する化学変化の実験で、容器を密閉しない場合、反応の前後で全体の質量はどうなるか。', answer: '減る' },
+        { num: 46, question: 'うすい塩化バリウムにうすい硫酸またはうすい硫酸ナトリウム水溶液を加えるとできる白い沈殿を何というか。', answer: '硫酸バリウム' },
+        { num: 47, question: '化学変化・状態変化など、物質の変化の前後で質量が変わらない法則を何というか。', answer: '質量保存の法則' },
+        { num: 48, question: '炭酸水素ナトリウムにうすい塩酸を加えると、水と食塩のほかに何ができるか。', answer: '二酸化炭素' },
+        { num: 49, question: '化学変化による2つの実験、鉄粉の酸化・アンモニアの発生のうち、吸熱反応はどちらか。', answer: 'アンモニアの発生' },
+        { num: 50, question: '化学変化が起こるときに温度が上がる反応を何というか。', answer: '発熱反応' },
+        { num: 51, question: '燃焼などで取り出すことのできる、もともと物質がもっているエネルギーを何というか。', answer: '化学エネルギー' },
+        { num: 52, question: '炭酸水素ナトリウムとクエン酸の混合物を水と反応させる場合、温度は上がるか下がるか。', answer: '下がる' },
+        { num: 53, question: '化学変化が起こるときに温度が下がる反応を何というか。', answer: '吸熱(きゅうねつ)反応' },
+        { num: 54, question: '酸化銅を作るとき、銅：酸素の質量比は何対何か。', answer: '４：１' },
+        { num: 55, question: '酸化マグネシウムを作るとき、マグネシウム：酸素の質量比は何対何か。', answer: '３：２' },
+        { num: 56, question: '原子１つの質量比は、銅：マグネシウムでは何対何か。', answer: '８：３' }
+      ]},
+      electricity: { name: '電気の世界', emoji: '⚡', questions: [
+        { num: 1, question: '電源・導線・抵抗をつないだ、電流が流れる道筋を何というか。', answer: '回路(かいろ)' },
+        { num: 2, question: '電気器具を図にかきやすい記号で表したものを何というか。', answer: '電気用図(でんきようず)記号(きごう)' },
+        { num: 3, question: '電気用図記号で回路を表したものを何というか。', answer: '回路図' },
+        { num: 4, question: '電流の単位Aは何と読むか。', answer: 'アンペア' },
+        { num: 5, question: '電流の単位mAは何と読むか。', answer: 'ミリアンペア' },
+        { num: 6, question: '１本の道筋でつながっている回路を何というか。', answer: '直列(ちょくれつ)回路' },
+        { num: 7, question: '枝分かれした道筋でつながっている回路を何というか。', answer: '並列(へいれつ)回路' },
+        { num: 8, question: '電流を流そうとするはたらきを何というか。', answer: '電圧(でんあつ)' },
+        { num: 9, question: '電圧の大きさの単位Vは何と読むか。', answer: 'ボルト' },
+        { num: 10, question: '直列回路で電源や各抵抗に流れる電流の大きさは、どうなっているか。', answer: 'どこも同じ' },
+        { num: 11, question: '並列回路で枝分かれする前の電流の大きさは、枝分かれした後の各抵抗に流れる電流の何と等しくなるか。', answer: '和' },
+        { num: 12, question: '直列回路での全体の電圧の大きさは、各抵抗にかかる電圧の大きさの何と等しくなるか。', answer: '和' },
+        { num: 13, question: '並列回路で各抵抗に加わる電圧の大きさは、どうなっているか。', answer: 'どこも同じ' },
+        { num: 14, question: '電流の流れにくさを何というか。', answer: '抵抗(ていこう)（電気抵抗）' },
+        { num: 15, question: '電流の大きさが、電熱線の両端にかかる電圧に比例することを何というか。', answer: 'オームの法則' },
+        { num: 16, question: '電圧をV、電流をI、抵抗をRとしたとき、Vを他の文字を使って表せ。', answer: 'V=R×I（V＝RI）' },
+        { num: 17, question: '電流を通しやすい物質を何というか。', answer: '導体(どうたい)' },
+        { num: 18, question: '電流を通しにくい物質を何というか。', answer: '絶縁体(ぜつえんたい)（不導体）' },
+        { num: 19, question: 'ケイ素などの導体と絶縁体の中間の性質をもつものを何というか。', answer: '半(はん)導体' },
+        { num: 20, question: '直列回路の全体の抵抗は、各抵抗の何と等しくなるか。', answer: '和' },
+        { num: 21, question: '並列回路の全体の抵抗は、1つ1つの抵抗に比べてどうなっているか。', answer: '小さくなっている' },
+        { num: 22, question: '並列回路の全体の抵抗は、1つ1つの抵抗の何と等しくなるか。', answer: '逆数の和の逆数' },
+        { num: 23, question: '電気器具が、光や熱、音を出したり物体を動かしたりするときの能力を何というか。', answer: '電力(でんりょく)' },
+        { num: 24, question: '電力の単位Wは何と読むか。', answer: 'ワット' },
+        { num: 25, question: '電力の数値はどのように計算して求められるか。', answer: '電圧×電流(でんりゅう)' },
+        { num: 26, question: '100V-1000Wのような電力の表し方を何というか。', answer: '消費(しょうひ)電力(でんりょく)' },
+        { num: 27, question: '電気のもつエネルギーを何というか。', answer: '電気エネルギー' },
+        { num: 28, question: '電流を流すときに発生する熱の量を何というか。', answer: '熱量(ねつりょう)' },
+        { num: 29, question: '熱量の単位Jは何と読むか。', answer: 'ジュール' },
+        { num: 30, question: '水1ｇを1℃上昇させるエネルギーを1calというが、これは約何Jか。', answer: '約4.2J' },
+        { num: 31, question: '電熱線で消費された電気エネルギーを何というか。', answer: '電(でん)力量(りょくりょう)' },
+        { num: 32, question: '電流は何極から何極へと流れるか。', answer: '＋極(きょく)から－極へ' },
+        { num: 33, question: '磁石の力を何というか。', answer: '磁力' },
+        { num: 34, question: '磁力がはたらく空間のことを何というか。', answer: '磁界(じかい)（磁場(じば)）' },
+        { num: 35, question: '磁界の中で、N極が指す向きを何というか。', answer: '磁界の向き' },
+        { num: 36, question: '磁界のようすを表した線を何というか。', answer: '磁力線' },
+        { num: 37, question: '異なる物質どうしをこすり合わせて、物質の表面近くの電子が一方の物質の表面に移動して帯びる電気を何というか。', answer: '静電(せいでん)気(き)' },
+        { num: 38, question: '地球を大きな磁石としてみた場合、N極は北極、南極のどちらか。', answer: '南極(なんきょく)' },
+        { num: 39, question: '異なる物質どうしをこすり合わせて、物質の表面近くの電子が一方の物質の表面に移動して電気を帯びることを何というか。', answer: '帯電(たいでん)' },
+        { num: 40, question: 'ストローと紙ぶくろをこすり合わせるとき、－の電気を帯びるのはどちらか。', answer: 'ストロー' },
+        { num: 41, question: 'ストローと紙ぶくろをこすり合わせるとき、＋の電気を帯びるのはどちらか。', answer: '紙(かみ)ぶくろ' },
+        { num: 42, question: '発光ダイオードを光らせるためには、電源の＋極を短いあし、長いあしのどちらにつければよいか。', answer: '長いあし' },
+        { num: 43, question: 'たまっていた電気が流れ出したり、電気が空間を移動したりする現象を何というか。', answer: '放電(ほうでん)' },
+        { num: 44, question: '気圧を低くした空間に電流が流れる現象を何というか。', answer: '真空(しんくう)放電' },
+        { num: 45, question: 'クルックス管の中の蛍光板を光らせるものを何というか。', answer: '陰極(いんきょく)線(せん)（電子(でんし)線）' },
+        { num: 46, question: '電子は何極から何極へと流れるか。', answer: '－極から＋極へ' },
+        { num: 47, question: '陰極線の正体である粒子を何というか。', answer: '電子' },
+        { num: 48, question: 'フレミングの左手の法則で、親指が指す向きは何の向きか。', answer: '力の向き' },
+        { num: 49, question: 'モーターが同じ方向に回転を続けられるのは、ブラシと何があるからか。', answer: '整流子(せいりゅうし)' },
+        { num: 50, question: 'コイルの内部の磁界が変化するとコイルに電圧が生じる現象を何というか。', answer: '電磁(でんじ)誘導(ゆうどう)' },
+        { num: 51, question: 'コイルの内部の磁界が変化するとコイルに電圧が生じて流れる電流を何というか。', answer: '誘導電流' },
+        { num: 52, question: 'コンセントに供給されている電流のように、＋極と－極が絶えず入れかわっている電流を何というか。', answer: '交流(こうりゅう)' },
+        { num: 53, question: '乾電池の電流のように、一定の向きに流れる電流を何というか。', answer: '直流(ちょくりゅう)' },
+        { num: 54, question: '交流の向きの変化が1秒間にくりかえす回数を何というか。', answer: '周波数(しゅうはすう)' },
+        { num: 55, question: '周波数の単位Hzは何と読むか。', answer: 'ヘルツ' },
+        { num: 56, question: '家庭に供給される電流(交流)の周波数は、東日本では何Hzか。', answer: '50Hz' },
+        { num: 57, question: '家庭に供給される電流(交流)の周波数は、西日本では何Hzか。', answer: '60Hz' },
+        { num: 58, question: 'α線やβ線など、高速の粒子や電磁波のことを何というか。', answer: '放射(ほうしゃ)線(せん)' },
+        { num: 59, question: '放射線を出す物質を何というか。', answer: '放射性物質' },
+        { num: 60, question: '放射線を出す性質（能力）のことを何というか。', answer: '放射能(のう)' },
+        { num: 61, question: 'レントゲンが発見した、放射線の一種は何か。', answer: 'エックス線（X線）' }
+      ]},
+      weather: { name: '天気とその変化', emoji: '☁️', questions: [
+        { num: 1, question: '直射日光が当たらず風通しのよい場所の、地上1.5ｍの高さではかる温度を何というか。', answer: '気温(きおん)' },
+        { num: 2, question: '乾球と湿球の示度の差ではかる、空気のしめりけの度合いを何というか。', answer: '湿度(しつど)' },
+        { num: 3, question: '風がふいてくる方向を何というか。', answer: '風向(ふうこう)' },
+        { num: 4, question: '天気図記号で表す風向には、どういう方位を使うか。', answer: '16方位' },
+        { num: 5, question: '内部を真空にした金属製容器で作られた気圧計を何というか。', answer: 'アネロイド気圧計(きあつけい)' },
+        { num: 6, question: '空気にはたらく重力によって生じる圧力のことを何というか。', answer: '気圧（大気圧）' },
+        { num: 7, question: '大気中で起こる、さまざまな現象を何というか。', answer: '気象(きしょう)' },
+        { num: 8, question: '雲量、気温、湿度、気圧、風向、風力などのことを何というか', answer: '気象要素(ようそ)' },
+        { num: 9, question: '単位面積あたりの力の大きさを何というか。', answer: '圧力(あつりょく)' },
+        { num: 10, question: 'Nと㎡を使ってPaを求めるにはどうすればよいか。', answer: 'N÷㎡（Nを㎡でわる）' },
+        { num: 11, question: '力の大きさを変えずに圧力を大きくするには、力のはたらく面積をどのようにすればよいか。', answer: '小さくする。' },
+        { num: 12, question: '通常、大気圧は約何hPaか。', answer: '約1000hPa\n（約1013hPa）' },
+        { num: 13, question: '面積500ｃ㎡に対して6Nの力が働いたとき、この面が受ける圧力は何Paか。', answer: '120Pa' },
+        { num: 14, question: '通常、大気圧は約何Paか。', answer: '約100000Pa\n（約101300Pa）' },
+        { num: 15, question: '風の強さを何というか。', answer: '風力(ふうりょく)' },
+        { num: 16, question: '風力は風力階級表で判断するが、何段階あるか。', answer: '13段階' },
+        { num: 17, question: '気象庁の地域気象観測システムのことを何というか。', answer: 'アメダス\n（AMeDAS）' },
+        { num: 18, question: '水蒸気の一部が水滴に変わることを何というか。', answer: '凝結(ぎょうけつ)' },
+        { num: 19, question: '海抜約2000m以下にできる、層積雲と層雲をまとめて何というか。', answer: '下層雲(かそううん)' },
+        { num: 20, question: '中層雲ができる範囲は海抜約何m以上何m以下か。', answer: '約2000m以上\n7000m以下' },
+        { num: 21, question: '上層雲ができる範囲は海抜約何m以上何m以下か。', answer: '約5000m以上\n13000m以下' },
+        { num: 22, question: '露点に達し、空気中の水蒸気が水滴になって浮かぶ現象を何というか。', answer: '霧(きり)' },
+        { num: 23, question: '空気が冷やされ、飽和水蒸気量と水蒸気量が同じ量になって水蒸気が凝結し始める温度を何というか。', answer: '露点(ろてん)' },
+        { num: 24, question: '1㎥の空気が含むことのできる限度の水蒸気の質量を何というか。', answer: '飽和(ほうわ)水蒸気量(すいじょうきりょう)' },
+        { num: 25, question: '中緯度付近では、天気の変化はどの方角からどの方角に向かって動くことが多いか。', answer: '西から東' },
+        { num: 26, question: '飽和水蒸気量に対する水蒸気の質量を%で表したものを何というか。', answer: '湿度' },
+        { num: 27, question: '同時刻に観測した気圧の値の等しい地点を結び、なめらかな曲線で表したものを何というか。', answer: '等圧線(とうあつせん)' },
+        { num: 28, question: '寒冷前線にできる、強い雨をせまい範囲に短時間降らせる雲を何というか。', answer: '積乱雲(せきらんうん)' },
+        { num: 29, question: '温暖前線にできる、弱い雨を広い範囲に長時間降らせる雲を何というか。', answer: '乱層雲(らんそううん)' },
+        { num: 30, question: '空気が膨張すると、気温はどうなるか。', answer: '下がる' },
+        { num: 31, question: '周辺より気圧が高い部分を何というか。', answer: '高気圧' },
+        { num: 32, question: '周辺より気圧が低い部分を何というか。', answer: '低気圧' },
+        { num: 33, question: '上昇気流と下降気流のうち、雲ができやすいのはどちらか。', answer: '上昇(じょうしょう)気流(きりゅう)' },
+        { num: 34, question: '地球上の水が、絶えず海と陸と大気の間を循環していることを何というか。', answer: '水の循環' },
+        { num: 35, question: '地球上の水のうち、海の水は何％を占めるか。', answer: '約97.4％（約97.5％）' },
+        { num: 36, question: '水の循環は、何によってもたらされているか。', answer: '太陽のエネルギー' },
+        { num: 37, question: '高気圧の中心付近で見られる空気の動きを何というか。', answer: '下降(かこう)気流' },
+        { num: 38, question: '低気圧の中心付近で見られる空気の動きを何というか。', answer: '上昇気流' },
+        { num: 39, question: '風が強い場所の等圧線の幅はどうなっているか。', answer: 'せまくなっている' },
+        { num: 40, question: '性質のことなる気団が接している面のことを何というか。', answer: '前線面(ぜんせんめん)' },
+        { num: 41, question: '前線面と地表面が交わるところを何というか。', answer: '前線' },
+        { num: 42, question: '寒気が暖気の下にもぐりこみ、暖気を押し上げながら進む前線を何というか。', answer: '寒冷(かんれい)前線' },
+        { num: 43, question: '暖気が寒気の上にはい上がり、寒気を押しやりながら進んでいく前線を何というか。', answer: '温暖(おんだん)前線' },
+        { num: 44, question: '寒気と暖気がぶつかりあってほとんど動かない前線を何というか。', answer: '停滞(ていたい)前線' },
+        { num: 45, question: '寒冷前線が温暖前線に追いついてできる前線を何というか。', answer: '閉(へい)そく前線' },
+        { num: 46, question: '気温や湿度が広い範囲でほぼ一様な空気のかたまりを何というか。', answer: '気団(きだん)' },
+        { num: 47, question: '中緯度帯で発生し、前線をともなう低気圧を何というか。', answer: '温帯(おんたい)低気圧' },
+        { num: 48, question: '温暖前線面の実際の傾きはどれくらいか。', answer: '約1/200\n（1/200～1/300）' },
+        { num: 49, question: '寒冷前線の通過後の風向きは、北寄りか南寄りか。', answer: '北寄(きたよ)り' },
+        { num: 50, question: '中緯度帯の上空を吹く大気の動きを何というか。', answer: '偏西風(へんせいふう)' },
+        { num: 51, question: '交互に通る高気圧と低気圧のうち高気圧を特別に何というか。', answer: '移動性(いどうせい)高気圧' },
+        { num: 52, question: '水と岩石のうち、温度変化が少ないのはどちらか。', answer: '水' },
+        { num: 53, question: '海に面した地域で、昼と夜で風向きが変わる風を何というか。', answer: '海陸風(かいりくふう)' },
+        { num: 54, question: '海風と陸風のうち、昼に吹くのはどちらか。', answer: '海風(うみかぜ)' },
+        { num: 55, question: '海風と陸風のうち、夜に吹くのはどちらか。', answer: '陸風(りくかぜ)' },
+        { num: 56, question: '冬は北西の風、夏は南東の風と、時期ごとの特徴的な風を何というか。', answer: '季節風(きせつふう)' },
+        { num: 57, question: '冬にユーラシア大陸で発達する高気圧を何というか。', answer: 'シベリア高気圧' },
+        { num: 58, question: '冬にユーラシア大陸で発達する大きな空気のかたまりを何というか。', answer: 'シベリア気団' },
+        { num: 59, question: '太平洋高気圧の発達により日本をおおう、あたたかくしめった気団を何というか。', answer: '小笠原(おがさわら)気団' },
+        { num: 60, question: '日本の冬型の気圧配置は何か。', answer: '西高東低' },
+        { num: 61, question: '初夏のころ、雨やくもりの日が多くなることを何というか。', answer: 'つゆ（梅雨）' },
+        { num: 62, question: 'つゆの時期にできる停滞前線を何というか。', answer: '梅雨(ばいう)前線' },
+        { num: 63, question: '夏の季節風に影響が強い、日本の南東に中心をもつ高気圧を何というか。', answer: '太平洋高気圧' },
+        { num: 64, question: '夏の終わりにできる停滞前線を何というか。', answer: '秋雨(あきさめ)前線' },
+        { num: 65, question: '熱帯低気圧が発達し、風力8（風速17.2m/s）以上の規模になったものを何というか。', answer: '台風(たいふう)' }
+      ]},
+      continuity: { name: '生命の連続性', emoji: '🌱', questions: [
+        { num: 1, question: '１個の細胞が、２つに分かれて２個の細胞になることを何というか。', answer: '細胞(さいぼう)分裂(ぶんれつ)' },
+        { num: 2, question: '細胞ひとつひとつをはなれやすくするための処理を何というか。', answer: '塩酸(えんさん)処理(しょり)' },
+        { num: 3, question: '細胞のようすをスケッチする場合、顕微鏡の倍率はどれくらいが好ましいか。', answer: '100～600倍\n(100～400倍)' },
+        { num: 4, question: '核の中にある、ひものようなものを何というか。', answer: '染色体(せんしょくたい)' },
+        { num: 5, question: 'からだをつくる細胞が分裂する細胞分裂を何というか。', answer: '体(たい)細胞(さいぼう)分裂(ぶんれつ)' },
+        { num: 6, question: 'タマネギの根の細胞分裂のようすを観察するとき、根元付近と先端付近のどちらを使うか。', answer: '先端(せんたん)付近(ふきん)' },
+        { num: 7, question: '生物の成長には細胞分裂で細胞の数がふえることのほか、どういったことが必要か。', answer: 'ふえた細胞自体が大きくなること' },
+        { num: 8, question: '生物が、新しい個体を作ることを何というか。', answer: '生殖(せいしょく)' },
+        { num: 9, question: '染色体が複製されて２本ずつになったあと、１本１本の染色体の様子はどうなるか。', answer: '太く短くなる' },
+        { num: 10, question: '単細胞生物やサツマイモなどが、受精を行わずに子をつくる生殖を何というか。', answer: '無性(むせい)生殖' },
+        { num: 11, question: '植物が、体の一部から新しい個体を作る無性生殖を何というか。', answer: '栄養(えいよう)生殖' },
+        { num: 12, question: '生殖細胞が受精して新しい個体を作るふえかたを何というか。', answer: '有性(ゆうせい)生殖' },
+        { num: 13, question: '生物の形や性質のことを何というか。', answer: '形質(けいしつ)' },
+        { num: 14, question: '動物の雌の生殖細胞を何というか。', answer: '卵(らん)' },
+        { num: 15, question: '動物の雄の生殖細胞を何というか。', answer: '精子(せいし)' },
+        { num: 16, question: '核が合体して１個の細胞となることを何というか。', answer: '受精(じゅせい)' },
+        { num: 17, question: '２種類の生殖細胞の核が合体してできる１個の細胞を何というか。', answer: '受精卵' },
+        { num: 18, question: '胚が細胞分裂をくり返して、新しい個体のつくりが完成していく過程を何というか。', answer: '発生(はっせい)' },
+        { num: 19, question: '花粉がめしべの柱頭につくことを何というか。', answer: '受粉' },
+        { num: 20, question: '動物の受精卵が細胞分裂を始めてから、個体になるまでを何というか。', answer: '胚(はい)' },
+        { num: 21, question: '染色体に含まれる、生物の形質を決めるものを何というか。', answer: '遺伝子(いでんし)' },
+        { num: 22, question: '花粉管の中を通る生殖細胞を何というか。', answer: '精細胞' },
+        { num: 23, question: '胚珠の中にある生殖細胞を何というか。', answer: '卵細胞' },
+        { num: 24, question: '受粉後に花粉からのびる管を何というか。', answer: '花粉管' },
+        { num: 25, question: '植物の受精卵は細胞分裂して何になるか。', answer: '胚' },
+        { num: 26, question: '体細胞分裂では、染色体の数はどうなるか。', answer: '同じ数（変わらない）' },
+        { num: 27, question: '生殖細胞をつくる細胞分裂を何というか。', answer: '減数(げんすう)分裂' },
+        { num: 28, question: '減数分裂では、染色体の数はどうなるか。', answer: '半分になる（半減する）' },
+        { num: 29, question: '親の形質が子やそれ以後の世代に伝わることを何というか。', answer: '遺伝' },
+        { num: 30, question: 'マツバボタンの赤と白の花の色のうち、顕性はどちらか', answer: '赤' },
+        { num: 31, question: 'エンドウの種子の丸としわのように、同時に現れない形質を何というか。', answer: '対立(たいりつ)形質' },
+        { num: 32, question: '自家受粉をくり返しても、親子で形質が変わらない個体を何というか。', answer: '純系(じゅんけい)' },
+        { num: 33, question: '実験によって遺伝の法則を見つけたのは誰か。', answer: 'メンデル' },
+        { num: 34, question: '対立形の純系どうしを交配したとき、子に現れる形質を何というか。', answer: '顕性(けんせい)(の)形質' },
+        { num: 35, question: '対立形の純系どうしを交配したとき、子に現れない形質を何というか。', answer: '潜性(せんせい)(の)形質' },
+        { num: 36, question: 'エンドウの子葉の色で、緑色は顕性か潜性か。', answer: '潜性' },
+        { num: 37, question: '丸い純系としわの純系を交配すると、子の形質はどうなるか。', answer: 'すべて丸い形質' },
+        { num: 38, question: 'エンドウの種子で、丸形は顕性か潜性か。', answer: '顕性' },
+        { num: 39, question: 'エンドウの茎の長さで、長い（高い）のは顕性か潜性か。', answer: '顕性' },
+        { num: 40, question: '減数分裂をすると、Aとaが分かれて入っていくことを何の法則というか。', answer: '分離(ぶんり)の法則' },
+        { num: 41, question: 'Aa同士を交配したとき、顕性と潜性の形質の現れる数の比。', answer: '３：１' },
+        { num: 42, question: 'Aaとaaの有性生殖では、表れる数の比はどうなるか。', answer: '１：１' },
+        { num: 43, question: '遺伝子の本体をアルファベットで何というか。', answer: 'DNA' },
+        { num: 44, question: '遺伝子の本体を、略称を用いずにカタカナ・漢字で表すと。', answer: 'デオキシリボ核酸(かくさん)' },
+        { num: 45, question: '花芽からDNAを取り出すのに適した植物は何か。', answer: 'ブロッコリー' },
+        { num: 46, question: '短期間で品種改良を行う技術を何というか。', answer: '遺伝子組換(くみか)え' },
+        { num: 47, question: '生物が長い年月をかけて代を重ねる間に変化すること。', answer: '進化(しんか)' },
+        { num: 48, question: '役割が違っても、もとは同じ器官と考えられるものを何というか。', answer: '相同(そうどう)器官' },
+        { num: 49, question: '肩からひじをつなぐ骨は何本か。', answer: '１本' },
+        { num: 50, question: 'ひじから手首をつなぐ骨は何本か。', answer: '２本' },
+        { num: 51, question: '山中伸弥博士が作製に成功した略称。', answer: 'iPS細胞' }
+      ]},
+      motion_energy: { name: '運動とエネルギー', emoji: '🏎️', questions: [
+        { num: 1, question: '２つの力と同じはたらきをする１つの力を何というか。', answer: '合力(ごうりょく)' },
+        { num: 2, question: '合力を求めることを何というか。', answer: '力の合成(ごうせい)' },
+        { num: 3, question: '向きが同じな２力の合力の大きさはどう求めるか。', answer: '２力の大きさの和' },
+        { num: 4, question: '向きが逆な２力の合力の大きさはどう求めるか。', answer: '２力の大きさの差' },
+        { num: 5, question: '一直線上にない２力の合力はどう表すか。', answer: '２力を２辺とする平行四辺形の対角線' },
+        { num: 6, question: '分けた２力をもとの力の何というか。', answer: '分力(ぶんりょく)' },
+        { num: 7, question: 'ある力を複数の力に分けることを何というか。', answer: '力の分解' },
+        { num: 8, question: '水中にある物体にかかり、深くなるほど大きくなる力。', answer: '水圧(すいあつ)' },
+        { num: 9, question: '水圧はどのような方向にはたらくか。', answer: 'あらゆる方向' },
+        { num: 10, question: '沈んでいる体積が大きいほど大きくなる上向きの力。', answer: '浮力(ふりょく)' },
+        { num: 11, question: '運動のようすは、何の何を知ることで調べられるか。', answer: '速(はや)さと向(む)き' },
+        { num: 12, question: '単位m/sを何と読むか。', answer: 'メートル毎秒(まいびょう)' },
+        { num: 13, question: '単位cm/sを何と読むか。', answer: 'センチメートル毎秒' },
+        { num: 14, question: '単位km/hを何と読むか。', answer: 'キロメートル毎時(じ)' },
+        { num: 15, question: '刻々と変化する速さを何というか。', answer: '瞬間(しゅんかん)の速さ' },
+        { num: 16, question: '一定の速さで進んだと考えて求める速さを何というか。', answer: '平均(へいきん)の速さ' },
+        { num: 17, question: '１秒間に50回打点する記録タイマーはどちらか。', answer: '東日本(ひがしにほん)' },
+        { num: 18, question: '１秒間に60回打点する記録タイマーはどちらか。', answer: '西日本(にしにほん)' },
+        { num: 19, question: '基準点を決めるとき、除外するのは。', answer: '打点(だてん)が重なってはっきりしない部分' },
+        { num: 20, question: '記録テープの打点間隔がせまいほど、どういう運動か。', answer: '遅(おそ)い運動' },
+        { num: 21, question: '記録テープの打点間隔が広いほど、どういう運動か。', answer: '速い運動' },
+        { num: 22, question: '斜面に平行な分力は、傾きが大きいほどどうなるか。', answer: '大きくなる' },
+        { num: 23, question: '斜面に垂直な分力は、傾きが大きいほどどうなるか。', answer: '小さくなる' },
+        { num: 24, question: '面から垂直に受ける力を何というか。', answer: '垂直(すいちょく)抗力(こうりょく)' },
+        { num: 25, question: '一定の速さで一直線上をまっすぐ進む運動。', answer: '等速(とうそく)直線(ちょくせん)運動(うんどう)' },
+        { num: 26, question: '垂直に落下する運動を何というか。', answer: '自由(じゆう)落下(らっか)' },
+        { num: 27, question: '運動する物体がだんだん遅くなる原因の力。', answer: '摩擦力(まさつりょく)' },
+        { num: 28, question: '同時に同じ大きさの逆向きの力を受けること。', answer: '作用(さよう)・反作用の法則' },
+        { num: 29, question: '進行方向の力と進行方向逆向きの力はどのような関係か。', answer: 'つり合っている\n（合力が0）' },
+        { num: 30, question: '運動している物体は等速直線運動を続けようとすること。', answer: '慣性(かんせい)の法則' },
+        { num: 31, question: '等速直線運動を続けようとする性質を何というか。', answer: '慣性' },
+        { num: 32, question: '移動させたとき、力が物体に対してしたことは何か。', answer: '仕事(しごと)' },
+        { num: 33, question: '仕事の単位は何か。また、何と読むか。', answer: 'Ｊ, ジュール' },
+        { num: 34, question: '力（N）と移動させた距離（m）の積を何というか。', answer: '仕事' },
+        { num: 35, question: '力または移動距離のどちらかが0のとき、仕事は。', answer: '0になる' },
+        { num: 36, question: '力の向きを変えるための滑車を何というか。', answer: '定滑車(ていかっしゃ)' },
+        { num: 37, question: '物体とともに動く滑車を何というか。', answer: '動(どう)滑車' },
+        { num: 38, question: '動滑車を１つ使うと、必要な力はどうなるか。', answer: '1/2になる' },
+        { num: 39, question: '動滑車を１つ使うと、力を加える距離はどうなるか。', answer: '２倍になる' },
+        { num: 40, question: '高い位置にある物体がもっているエネルギー。', answer: '位置(いち)エネルギー' },
+        { num: 41, question: '手段を変えても仕事の大きさが変わらないこと。', answer: '仕事の原理(げんり)' },
+        { num: 42, question: '他の物体を動かしたり変形させたりできる物体。', answer: 'エネルギー' },
+        { num: 43, question: '１秒間でどれだけの仕事ができるかという能率。', answer: '仕事率(しごとりつ)' },
+        { num: 44, question: '仕事率の単位は何か。また、何と読むか。', answer: 'W, ワット' },
+        { num: 45, question: '仕事率はどのような計算方法で求めるか。', answer: '仕事（J）÷時間（秒）' },
+        { num: 46, question: '仕事の前後では、物質のもっている何が変化するか。', answer: 'エネルギー' },
+        { num: 47, question: '運動する物体がもっているエネルギー。', answer: '運動エネルギー' },
+        { num: 48, question: '位置エネルギーの大きさは何と何によって決まるか。', answer: '高さと質量' },
+        { num: 49, question: '距離を長くすることによって加える力を小さくする工夫。', answer: 'てこ' },
+        { num: 50, question: 'てこの原理と同じような効果になる組み合わせの仕組み。', answer: '輪軸(りんじく)' },
+        { num: 51, question: '運動エネルギーの大きさは何と何によって決まるか。', answer: '速さと質量' },
+        { num: 52, question: '光電池でモーターを回すときのもとのエネルギーは。', answer: '光エネルギー' },
+        { num: 53, question: '運動エネルギーと位置エネルギーの和。', answer: '力学的(りきがくてき)エネルギー' },
+        { num: 54, question: '力学的エネルギーが一定に保たれること。', answer: '力学的エネルギーの保存' },
+        { num: 55, question: '変形した物体がもつエネルギーは何エネルギーか。', answer: '弾性エネルギー' },
+        { num: 56, question: '摩擦によって運動エネルギーが主に何として逃げるか。', answer: '熱エネルギー' },
+        { num: 57, question: '近くに置いた水が波打つときにはたらいているエネルギー。', answer: '音エネルギー' },
+        { num: 58, question: 'エネルギー変換の前後で総量が一定に保たれること。', answer: 'エネルギーの保存' },
+        { num: 59, question: '投入されたエネルギーに対し利用できる割合。', answer: 'エネルギー変換(へんかん)効率(こうりつ)' },
+        { num: 60, question: '物質が移動せずに熱が伝わる現象。', answer: '伝導(でんどう)（熱伝導）' },
+        { num: 61, question: '物質が移動して全体に熱が伝わる現象。', answer: '対流(たいりゅう)' },
+        { num: 62, question: '空間をへだててはなれたところまで熱が伝わる現象。', answer: '放射(ほうしゃ)（熱放射）' }
+      ]},
+      environment: { name: '自然環境・科学技術', emoji: '🌱', questions: [
+        { num: 1, question: '将来にわたって利用できるエネルギー。', answer: '再生(さいせい)可能(かのう)（な）エネルギー' },
+        { num: 2, question: '石炭・石油・天然ガスをまとめて何というか。', answer: '化石(かせき)燃料(ねんりょう)' },
+        { num: 3, question: '水力発電のおおもとのエネルギーは。', answer: '位置エネルギー' },
+        { num: 4, question: '火力発電のおおもとのエネルギーは。', answer: '化学エネルギー' },
+        { num: 5, question: '原子力発電のおおもとのエネルギーは。', answer: '核エネルギー' },
+        { num: 6, question: '天候の影響を受けるが多くの電力をまかなえる発電は。', answer: '太陽光(たいようこう)発電' },
+        { num: 7, question: '地下のマグマの熱で作られた水蒸気を利用する発電。', answer: '地熱発電' },
+        { num: 8, question: '放射能の単位。', answer: 'Bq, ベクレル' },
+        { num: 9, question: 'ヘリウムの原子核である放射線。', answer: 'α線' },
+        { num: 10, question: '高速の粒子が電子である放射線。', answer: 'β線' },
+        { num: 11, question: '高速の粒子が中性子である放射線。', answer: '中性子線' },
+        { num: 12, question: '人間に対する影響を表す単位。', answer: 'Sv, シーベルト' },
+        { num: 13, question: 'γ線やX線は何の一種か。', answer: '電磁波(てんじは)' },
+        { num: 14, question: '残っている放射性同位体がもとの半分になるまでの時間。', answer: '半減期(はんげんき)' },
+        { num: 15, question: '家畜の排泄物などを用いて行う発電は何か。', answer: 'バイオマス発電' },
+        { num: 16, question: '地域に生息するすべての生物ととりまく環境。', answer: '生態系' },
+        { num: 17, question: '鎖のようにつながっていることを何というか。', answer: '食物(しょくもつ)連鎖(れんさ)' },
+        { num: 18, question: '網の目のようにつながっていることを何というか。', answer: '食物網(もう)' },
+        { num: 19, question: '強い生物と弱い生物の数量的関係。', answer: 'ピラミッド形' },
+        { num: 20, question: '無機物から有機物をつくる生物。', answer: '生産者' },
+        { num: 21, question: '他の生物を食べることで養分を取り入れる生物。', answer: '消費者' },
+        { num: 22, question: '数量的な釣り合いがくずれる例。', answer: '人間の活動' },
+        { num: 23, question: '体内に取り込まれ高い濃度になること。', answer: '生物濃縮(のうしゅく)' },
+        { num: 24, question: '有機物を無機物に分解する消費者を特別に何というか。', answer: '分解者' },
+        { num: 25, question: '微生物が入っている液を沸騰させるとどうなるか。', answer: '微生物(びせいぶつ)がいなくなる' },
+        { num: 26, question: 'からだが菌糸でできているなかまを何というか。', answer: '菌類(きんるい)' },
+        { num: 27, question: '非常に小さな単細胞の分解者のなかま。', answer: '細菌類(さいきんるい)' },
+        { num: 28, question: '食物連鎖においておおもととなるエネルギー。', answer: '光エネルギー' },
+        { num: 29, question: '呼吸によって自然界を循環する物質。', answer: '炭素' },
+        { num: 30, question: '食物連鎖は何の移動を行なっているか。', answer: 'エネルギー' },
+        { num: 31, question: 'PETとPVCの共通点。', answer: '水にしずむ。' },
+        { num: 32, question: '最もきれいな水にすむ貝は。', answer: 'カワニナ' },
+        { num: 33, question: '少しきたない水にすむ生物。', answer: 'ゲンジボタル' },
+        { num: 34, question: '最もきたない水にすむ生物。', answer: 'アメリカザリガニ' },
+        { num: 35, question: 'サワガニなどがいるのはどういう水。', answer: 'きれいな水' },
+        { num: 36, question: '硫黄酸化物の排出を抑える装置。', answer: '排煙(はいえん)脱硫(だつりゅう)装置(そうち)' },
+        { num: 37, question: '地球の平均気温の上昇の問題。', answer: '地球(ちきゅう)温暖化(おんだんか)' },
+        { num: 38, question: '地球上の熱が宇宙に放出されるのを防ぐ気体。', answer: '温室(おんしつ)効果(こうか)ガス' },
+        { num: 39, question: '避難所などの情報を地図に表したもの。', answer: 'ハザードマップ' },
+        { num: 40, question: '紫外線を減らすはたらきをしている層。', answer: 'オゾン層' },
+        { num: 41, question: 'SOxやNOxの放出によっておこる問題。', answer: '大気(たいき)汚染(おせん)' },
+        { num: 42, question: 'もともとその地域に生息していた生物。', answer: '在来(ざいらい)生物（在来種）' },
+        { num: 43, question: '外国から持ち込まれた生物。', answer: '外(がい)来(らい)生物（外来種）' },
+        { num: 44, question: '寿命も長い電球。', answer: 'LED電球' },
+        { num: 45, question: '廃棄物の発生抑制。', answer: 'リデュース（Reduce）' },
+        { num: 46, question: '部品、製品などの再使用。', answer: 'リユース（Reuse）' },
+        { num: 47, question: '廃棄物の再資源化。', answer: 'リサイクル（Recycle）' },
+        { num: 48, question: '永続的な文明の土台ができた社会。', answer: '持続(じぞく)可能(かのう)な社会' },
+        { num: 49, question: '持続可能な開発目標。', answer: 'SDGs' },
+        { num: 50, question: 'SDGsの達成目標は。', answer: '2030年' },
+        { num: 51, question: 'リサイクルなどまでを含めて評価すること。', answer: 'LCA（ライフサイクルアセスメント）' },
+        { num: 52, question: '排熱利用して効率を上げるシステム。', answer: 'コージェネレーションシステム' },
+        { num: 53, question: '微生物によって分解されるプラスチック。', answer: '生(せい)分解性(ぶんかいせい)プラスチック' },
+        { num: 54, question: '軽くて強い繊維は何というか。', answer: '炭素繊維' },
+        { num: 55, question: 'もとの形に戻る性質の合金を何というか。', answer: '形状(けいじょう)記憶(きおく)合金(ごうきん)' }
+      ]},
+    };
+
+    let currentQuizData = [];
+    let currentIndex = 0;
+    let forgottenQuestions = [];
+    let isReviewMode = false;
+
+    function initMenu() {
+      const menu = document.getElementById('category-selection');
+      menu.innerHTML = '';
+      Object.keys(quizCategories).forEach(key => {
+        const cat = quizCategories[key];
+        const btn = document.createElement('div');
+        btn.className = 'category-button';
+        btn.onclick = () => selectCategory(key);
+        btn.innerHTML = `<div class="category-title">${cat.emoji} ${cat.name}</div><div class="category-count">${cat.questions.length}問</div>`;
+        menu.appendChild(btn);
+      });
+    }
+
+    function selectCategory(key) {
+      currentQuizData = [...quizCategories[key].questions].sort(() => Math.random() - 0.5);
+      currentIndex = 0; forgottenQuestions = []; isReviewMode = false;
+      document.getElementById('category-selection').style.display = 'none';
+      document.getElementById('quiz-screen').style.display = 'flex';
+      document.getElementById('btn-back').style.display = 'block';
+      document.getElementById('app-title').textContent = quizCategories[key].name;
+      resetQuizUI();
+      displayQuestion();
+    }
+
+    function backToMenu() {
+      document.getElementById('category-selection').style.display = 'grid';
+      document.getElementById('quiz-screen').style.display = 'none';
+      document.getElementById('btn-back').style.display = 'none';
+      document.getElementById('btn-prev').style.display = 'none';
+      document.getElementById('app-title').textContent = '中学理科 一問一答';
+      document.getElementById('header-stats').textContent = '- / -';
+      document.getElementById('progress-fill').style.width = '0%';
+    }
+
+    function resetQuizUI() {
+      document.getElementById('quiz-screen').innerHTML = `
+        <div class="quiz-card">
+          <div><div class="question-number" id="question-num"></div><div class="question-text" id="question"></div></div>
+          <div class="answer-section"><div id="answer-display" class="answer-text"></div></div>
+          <div class="button-group" id="reveal-group"><button class="btn-reveal" onclick="revealAnswer()">解答を表示</button></div>
+          <div class="button-group" id="memory-buttons" style="display: none; gap: 12px;">
+            <button class="btn-remember" onclick="markRemembered()">✓ 覚えていた</button>
+            <button class="btn-forgot" onclick="markForgot()">✗ 忘れていた</button>
+          </div>
+        </div>`;
+    }
+
+    function displayQuestion() {
+      const q = currentQuizData[currentIndex];
+      document.getElementById('question-num').textContent = `第${q.num}問`;
+      document.getElementById('question').textContent = q.question;
+      const prefix = isReviewMode ? "復習: " : "";
+      document.getElementById('header-stats').textContent = `${prefix}${currentIndex + 1} / ${currentQuizData.length}`;
+      document.getElementById('progress-fill').style.width = ((currentIndex + 1) / currentQuizData.length * 100) + '%';
+      document.getElementById('answer-display').textContent = '';
+      document.getElementById('reveal-group').style.display = 'flex';
+      document.getElementById('memory-buttons').style.display = 'none';
+      document.getElementById('btn-prev').style.display = currentIndex > 0 ? 'block' : 'none';
+    }
+
+    function revealAnswer() {
+      document.getElementById('answer-display').textContent = currentQuizData[currentIndex].answer;
+      document.getElementById('reveal-group').style.display = 'none';
+      document.getElementById('memory-buttons').style.display = 'flex';
+    }
+
+    function markRemembered() { nextQuestion(); }
+    function markForgot() {
+      const q = currentQuizData[currentIndex];
+      if (!forgottenQuestions.find(fq => fq.num === q.num)) forgottenQuestions.push(q);
+      nextQuestion();
+    }
+
+    function nextQuestion() {
+      if (currentIndex < currentQuizData.length - 1) { currentIndex++; displayQuestion(); } 
+      else { showCompletion(); }
+    }
+
+    function prevQuestion() { if (currentIndex > 0) { currentIndex--; displayQuestion(); } }
+
+    function showCompletion() {
+      const screen = document.getElementById('quiz-screen');
+      if (isReviewMode || forgottenQuestions.length === 0) {
+        screen.innerHTML = `<div class="quiz-card"><div style="text-align:center;"><div style="font-size:48px;">🎉</div><div style="font-size:24px; font-weight:600; margin-bottom:20px;">全問完了！</div><button class="btn-restart" style="background:#667eea; color:white; padding:12px 24px; border-radius:8px;" onclick="backToMenu()">メニューに戻る</button></div></div>`;
+      } else {
+        screen.innerHTML = `<div class="quiz-card"><div style="text-align:center;"><div style="font-size:48px;">📚</div><div style="font-size:20px; font-weight:600; margin-bottom:20px;">忘れていた${forgottenQuestions.length}問を復習しますか？</div><div class="button-group"><button class="btn-remember" onclick="startReview()">復習開始</button><button class="btn-forgot" style="background:#718096" onclick="backToMenu()">終了</button></div></div></div>`;
+      }
+    }
+
+    function startReview() {
+      isReviewMode = true; currentQuizData = [...forgottenQuestions].sort(() => Math.random() - 0.5);
+      currentIndex = 0; forgottenQuestions = []; resetQuizUI(); displayQuestion();
+    }
+
+    initMenu();
+  </script>
+ </body>
+</html>
