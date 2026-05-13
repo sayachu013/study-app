@@ -40,7 +40,25 @@
    </div>
    <div style="padding: 0 20px;"><div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width: 0%"></div></div></div>
    <div id="quiz-content" style="flex: 1; display: flex; flex-direction: column; overflow-y: auto;">
+   <div id="test-mode-menu" class="category-menu">
+      <div class="category-button" style="border-color: #48bb78; background: #f0fff4;" onclick="showTestSetup('science')">
+        <div class="category-title">🧪 理科：50問テスト</div>
+        <div class="category-count">全単元からランダムに50問出題</div>
+      </div>
+      <div class="category-button" style="border-color: #48bb78; background: #f0fff4;" onclick="showTestSetup('social')">
+        <div class="category-title">🌏 社会：50問テスト</div>
+        <div class="category-count">全単元からランダムに50問出題</div>
+      </div>
+    </div>
+    
     <div id="category-selection" class="category-menu"></div>
+
+    <div id="test-setup" style="display:none; background: white; border-radius: 12px; padding: 20px; margin: 20px; flex-direction: column; animation: slideIn 0.4s ease-out;">
+      <h3 style="font-weight: bold; margin-bottom: 10px; color:#333;">テスト範囲を選択（複数可）</h3>
+      <div id="range-list" style="flex: 1; overflow-y: auto; max-height: 350px; border: 1px solid #eee; padding: 10px; margin-bottom: 15px; border-radius:8px;"></div>
+      <button class="btn-reveal" style="background:#48bb78; width:100%; height:50px; border-radius:8px; color:white; font-weight:bold;" onclick="startCombinedTest()">50問テストを開始</button>
+    </div>
+
     <div id="quiz-screen" style="display: none; flex: 1; display: flex; flex-direction: column;"></div>
    </div>
    <div style="display: flex; justify-content: space-between; padding: 16px 20px;">
@@ -1941,107 +1959,146 @@
     }; 
 
 
-    /* 制御ロジック */
-    let currentQuizData = [];
-    let currentIndex = 0;
-    let forgottenQuestions = [];
-    let isReviewMode = false;
+/* 制御ロジック（50問テスト・チェック初期値なし・復習機能付） [cite: 298] */
+let currentQuizData = [];
+let currentIndex = 0;
+let forgottenQuestions = [];
+let isReviewMode = false;
+let isTestMode = false;
+let testCorrectCount = 0;
 
-    function initMenu() {
-      const menu = document.getElementById('category-selection');
-      menu.innerHTML = '';
-      Object.keys(quizCategories).forEach(key => {
-        const cat = quizCategories[key];
-        const btn = document.createElement('div');
-        btn.className = 'category-button';
-        btn.onclick = () => selectCategory(key);
-        btn.innerHTML = `<div class="category-title">${cat.name}</div><div class="category-count">${cat.questions.length}問</div>`;
-        menu.appendChild(btn);
-      });
+// 通常学習メニューの初期化 [cite: 299, 300]
+function initMenu() {
+  const menu = document.getElementById('category-selection');
+  menu.innerHTML = '<div style="grid-column: 1/-1; font-weight:bold; color:rgba(255,255,255,0.9); margin:10px 0 5px 5px; font-size:14px;">▼ 単元別に学習する</div>';
+  Object.keys(quizCategories).forEach(key => {
+    const cat = quizCategories[key];
+    const btn = document.createElement('div');
+    btn.className = 'category-button';
+    btn.onclick = () => selectCategory(key);
+    btn.innerHTML = `<div class="category-title">${cat.name}</div><div class="category-count">${cat.questions.length}問</div>`;
+    menu.appendChild(btn);
+  });
+}
+
+// テスト範囲選択画面の生成 [cite: 302]
+function showTestSetup(type) {
+  isTestMode = true;
+  document.getElementById('test-mode-menu').style.display = 'none';
+  document.getElementById('category-selection').style.display = 'none';
+  document.getElementById('test-setup').style.display = 'flex';
+  document.getElementById('btn-back').style.display = 'block';
+  const list = document.getElementById('range-list');
+  list.innerHTML = '';
+  
+  Object.keys(quizCategories).forEach(key => {
+    const cat = quizCategories[key];
+    const isSocial = !!cat.emoji; // emojiプロパティで判別 [cite: 155]
+    if ((type === 'science' && !isSocial) || (type === 'social' && isSocial)) {
+      // チェックボックスを未選択状態で生成 [cite: 20]
+      list.innerHTML += `
+        <label style="display:flex; align-items:center; padding:12px; border-bottom:1px solid #eee; cursor:pointer;">
+          <input type="checkbox" name="range" value="${key}" style="width:20px; height:20px; margin-right:12px;">
+          <span style="font-size:15px; color:#333;">${cat.name} (${cat.questions.length}問)</span>
+        </label>`;
     }
+  });
+}
 
-    function selectCategory(key) {
-      currentQuizData = [...quizCategories[key].questions].sort(() => Math.random() - 0.5);
-      currentIndex = 0; forgottenQuestions = []; isReviewMode = false;
-      document.getElementById('category-selection').style.display = 'none';
-      document.getElementById('quiz-screen').style.display = 'flex';
-      document.getElementById('btn-back').style.display = 'block';
-      document.getElementById('app-title').textContent = quizCategories[key].name;
-      resetQuizUI();
-      displayQuestion();
-    }
+// テスト開始（50問抽出） [cite: 313]
+function startCombinedTest() {
+  const checked = document.querySelectorAll('input[name="range"]:checked');
+  if (checked.length === 0) return alert("範囲を1つ以上選択してください。");
+  let all = [];
+  checked.forEach(c => all = all.concat(quizCategories[c.value].questions));
+  
+  let shuffled = all.sort(() => Math.random() - 0.5);
+  currentQuizData = shuffled.slice(0, 50); // 最大50問を抽出 [cite: 301]
+  
+  testCorrectCount = 0; currentIndex = 0; forgottenQuestions = []; isReviewMode = false;
+  document.getElementById('test-setup').style.display = 'none';
+  document.getElementById('quiz-screen').style.display = 'flex';
+  document.getElementById('app-title').textContent = '50問テスト';
+  resetQuizUI(); displayQuestion();
+}
 
-    function backToMenu() {
-      document.getElementById('category-selection').style.display = 'grid';
-      document.getElementById('quiz-screen').style.display = 'none';
-      document.getElementById('btn-back').style.display = 'none';
-      document.getElementById('btn-prev').style.display = 'none';
-      document.getElementById('app-title').textContent = '中学理科・社会 一問一答';
-      document.getElementById('header-stats').textContent = '- / -';
-      document.getElementById('progress-fill').style.width = '0%';
-    }
+// 単元別学習開始 [cite: 301]
+function selectCategory(key) {
+  isTestMode = false;
+  currentQuizData = [...quizCategories[key].questions].sort(() => Math.random() - 0.5);
+  currentIndex = 0; forgottenQuestions = []; isReviewMode = false;
+  document.getElementById('test-mode-menu').style.display = 'none';
+  document.getElementById('category-selection').style.display = 'none';
+  document.getElementById('quiz-screen').style.display = 'flex';
+  document.getElementById('btn-back').style.display = 'block';
+  document.getElementById('app-title').textContent = quizCategories[key].name;
+  resetQuizUI(); displayQuestion();
+}
 
-    function resetQuizUI() {
-      document.getElementById('quiz-screen').innerHTML = `
-        <div class="quiz-card">
-          <div><div class="question-number" id="question-num"></div><div class="question-text" id="question"></div></div>
-          <div class="answer-section"><div id="answer-display" class="answer-text"></div></div>
-          <div class="button-group" id="reveal-group"><button class="btn-reveal" onclick="revealAnswer()">解答を表示</button></div>
-          <div class="button-group" id="memory-buttons" style="display: none; gap: 12px;">
-            <button class="btn-remember" onclick="markRemembered()">✓ 覚えていた</button>
-            <button class="btn-forgot" onclick="markForgot()">✗ 忘れていた</button>
-          </div>
-        </div>`;
-    }
+// クイズ画面のUI生成 [cite: 305]
+function resetQuizUI() {
+  document.getElementById('quiz-screen').innerHTML = `
+    <div class="quiz-card">
+      <div><div class="question-number" id="question-num"></div><div class="question-text" id="question"></div></div>
+      <div class="answer-section"><div id="answer-display" class="answer-text"></div></div>
+      <div class="button-group" id="reveal-group"><button class="btn-reveal" onclick="revealAnswer()">解答を表示</button></div>
+      <div class="button-group" id="memory-buttons" style="display: none; gap: 12px;">
+        <button class="btn-remember" style="background:#48bb78; color:white; flex:1; padding:12px; border-radius:8px;" onclick="markRemembered()">✓ 正解した</button>
+        <button class="btn-forgot" style="background:#ed8936; color:white; flex:1; padding:12px; border-radius:8px;" onclick="markForgot()">✗ 間違った</button>
+      </div>
+    </div>`;
+}
 
-    function displayQuestion() {
-      const q = currentQuizData[currentIndex];
-      document.getElementById('question-num').textContent = `第${q.num}問`;
-      document.getElementById('question').textContent = q.question;
-      const prefix = isReviewMode ? "復習: " : "";
-      document.getElementById('header-stats').textContent = `${prefix}${currentIndex + 1} / ${currentQuizData.length}`;
-      document.getElementById('progress-fill').style.width = ((currentIndex + 1) / currentQuizData.length * 100) + '%';
-      document.getElementById('answer-display').textContent = '';
-      document.getElementById('reveal-group').style.display = 'flex';
-      document.getElementById('memory-buttons').style.display = 'none';
-      document.getElementById('btn-prev').style.display = currentIndex > 0 ? 'block' : 'none';
-    }
+// 問題表示 [cite: 307, 308, 309]
+function displayQuestion() {
+  const q = currentQuizData[currentIndex];
+  document.getElementById('question-num').textContent = `第${currentIndex + 1}問`;
+  document.getElementById('question').textContent = q.question;
+  const modeLabel = isReviewMode ? "復習" : (isTestMode ? "テスト" : "通常");
+  document.getElementById('header-stats').textContent = `${modeLabel}: ${currentIndex + 1} / ${currentQuizData.length}`;
+  document.getElementById('progress-fill').style.width = ((currentIndex + 1) / currentQuizData.length * 100) + '%';
+  document.getElementById('answer-display').textContent = '';
+  document.getElementById('reveal-group').style.display = 'flex';
+  document.getElementById('memory-buttons').style.display = 'none';
+}
 
-    function revealAnswer() {
-      document.getElementById('answer-display').textContent = currentQuizData[currentIndex].answer;
-      document.getElementById('reveal-group').style.display = 'none';
-      document.getElementById('memory-buttons').style.display = 'flex';
-    }
+// 解答表示 [cite: 310]
+function revealAnswer() {
+  document.getElementById('answer-display').textContent = currentQuizData[currentIndex].answer;
+  document.getElementById('reveal-group').style.display = 'none';
+  document.getElementById('memory-buttons').style.display = 'flex';
+}
 
-    function markRemembered() { nextQuestion(); }
-    function markForgot() {
-      const q = currentQuizData[currentIndex];
-      if (!forgottenQuestions.find(fq => fq.num === q.num)) forgottenQuestions.push(q);
-      nextQuestion();
-    }
+// 正解・間違い判定 [cite: 311, 312]
+function markRemembered() { if (isTestMode && !isReviewMode) testCorrectCount++; nextQuestion(); }
 
-    function nextQuestion() {
-      if (currentIndex < currentQuizData.length - 1) { currentIndex++; displayQuestion(); } 
-      else { showCompletion(); }
-    }
+function markForgot() {
+  const q = currentQuizData[currentIndex];
+  if (!forgottenQuestions.some(fq => fq.question === q.question)) forgottenQuestions.push(q);
+  nextQuestion();
+}
 
-    function prevQuestion() { if (currentIndex > 0) { currentIndex--; displayQuestion(); } }
+function nextQuestion() {
+  if (currentIndex < currentQuizData.length - 1) { currentIndex++; displayQuestion(); } 
+  else { showCompletion(); }
+}
 
-    function showCompletion() {
-      const screen = document.getElementById('quiz-screen');
-      if (isReviewMode || forgottenQuestions.length === 0) {
-        screen.innerHTML = `<div class="quiz-card"><div style="text-align:center;"><div style="font-size:48px;">🎉</div><div style="font-size:24px; font-weight:600; margin-bottom:20px;">全問完了！</div><button class="btn-restart" style="background:#667eea; color:white; padding:12px 24px; border-radius:8px;" onclick="backToMenu()">メニューに戻る</button></div></div>`;
-      } else {
-        screen.innerHTML = `<div class="quiz-card"><div style="text-align:center;"><div style="font-size:48px;">📚</div><div style="font-size:20px; font-weight:600; margin-bottom:20px;">忘れていた${forgottenQuestions.length}問を復習しますか？</div><div class="button-group"><button class="btn-remember" onclick="startReview()">復習開始</button><button class="btn-forgot" style="background:#718096" onclick="backToMenu()">終了</button></div></div></div>`;
-      }
-    }
+// 完了画面（スコア表示） [cite: 317, 318]
+function showCompletion() {
+  const screen = document.getElementById('quiz-screen');
+  if (isReviewMode || (isTestMode === false && forgottenQuestions.length === 0)) {
+    screen.innerHTML = `<div class="quiz-card"><div style="text-align:center;"><div style="font-size:48px;">🎉</div><div style="font-size:24px; font-weight:600; margin-bottom:20px;">終了しました</div><button class="btn-reveal" onclick="backToMenu()">メニューに戻る</button></div></div>`;
+  } else if (isTestMode && !isReviewMode) {
+    screen.innerHTML = `<div class="quiz-card" style="text-align:center;"><div style="font-size:20px;">テスト結果</div><div style="font-size:48px; color:#667eea; font-weight:bold; margin:15px 0;">${testCorrectCount} / 50点</div><p>(正答率: ${Math.round(testCorrectCount/currentQuizData.length*100)}%)</p><div style="margin:20px 0;">間違えた${forgottenQuestions.length}問を復習しますか？</div><div class="button-group"><button class="btn-remember" onclick="startReview()">復習開始</button><button class="btn-forgot" style="background:#718096" onclick="backToMenu()">終了</button></div></div>`;
+  } else {
+    screen.innerHTML = `<div class="quiz-card"><div style="text-align:center;"><div style="font-size:48px;">📚</div><div style="font-size:20px; font-weight:600; margin-bottom:20px;">${forgottenQuestions.length}問を復習しますか？</div><div class="button-group"><button class="btn-remember" onclick="startReview()">復習開始</button><button class="btn-forgot" onclick="backToMenu()">終了</button></div></div></div>`;
+  }
+}
 
-    function startReview() {
-      isReviewMode = true; currentQuizData = [...forgottenQuestions].sort(() => Math.random() - 0.5);
-      currentIndex = 0; forgottenQuestions = []; resetQuizUI(); displayQuestion();
-    }
-
-    initMenu();
+// 復習モード開始 [cite: 319, 320]
+function startReview() { isReviewMode = true; currentQuizData = [...forgottenQuestions].sort(() => Math.random() - 0.5); currentIndex = 0; forgottenQuestions = []; resetQuizUI(); displayQuestion(); }
+function backToMenu() { location.reload(); }
+initMenu(); // 初期化実行 [cite: 321]
   </script>
  </body>
 </html>
